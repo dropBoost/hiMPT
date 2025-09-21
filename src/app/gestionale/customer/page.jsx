@@ -1,0 +1,55 @@
+'use client'
+
+import { useState } from "react";
+
+import InserimentoUtenti from "./inserimentoUtenti";
+import ElencoUtenti from "./elencoUtenti";
+
+export default function Customer() {
+
+  const [onDisplaySectionOne, setOnDisplaySectionOne] = useState("on")
+  const [onDisplaySectionTwo, setOnDisplaySectionTwo] = useState("off")
+
+  function ClickSectionOne () {
+    setOnDisplaySectionOne("on")
+    setOnDisplaySectionTwo("off")
+  }
+
+  function ClickSectionTwo () {
+    setOnDisplaySectionOne("off")
+    setOnDisplaySectionTwo("on")
+  }
+
+  return (
+    <>
+    <div className="flex flex-col h-full w-full justify-center items-center">
+      <div className="flex items-start md:justify-start justify-center w-full gap-3 py-3">
+        <ButtonSection click={ClickSectionOne} nome="INSERIMENTO UTENTI" section={onDisplaySectionOne}/>
+        <ButtonSection click={ClickSectionTwo} nome="ELENCO UTENTI" section={onDisplaySectionTwo}/>
+      </div>
+      <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border border-t rounded-none border-brand dark:bg-neutral-800/50 lg:rounded-2xl overflow-auto">
+        <InserimentoUtenti onDisplay={onDisplaySectionOne}/>
+        <ElencoUtenti onDisplay={onDisplaySectionTwo}/>
+      </div>
+    </div>
+    </>
+  );
+}
+
+export function ButtonSection ({section, nome, click}) {
+
+  return (
+    <>
+    <button
+      onClick={click}
+      className={`
+      flex items-center justify-center text-xs font-bold border rounded-2xl px-3 py-1 
+      ${section === "on" ? `text-neutral-100 bg-brand  border-brand` : `text-brand border border-brand`}
+      `}
+      >{nome}</button>
+    </>
+  )
+}
+
+
+

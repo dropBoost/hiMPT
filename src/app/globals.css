@@ -27,8 +27,8 @@ a {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
+    --background: theme(colors.neutral.100);
+    --foreground: theme(colors.neutral.950);
     --card: 0 0% 100%;
     --card-foreground: 0 0% 3.9%;
     --popover: 0 0% 100%;
@@ -54,8 +54,8 @@ a {
     --radius: 0.5rem;
   }
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
+    --background: theme(colors.neutral.950);
+    --foreground: theme(colors.neutral.100);
     --card: 0 0% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
@@ -81,7 +81,39 @@ a {
   }
 }
 
+/* ===== Autofill LIGHT mode (default) ===== */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: #111827;             /* text-gray-900 */
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset; /* bg-white */
+  transition: background-color 9999s ease-in-out 0s;
+}
+input:-moz-autofill,
+textarea:-moz-autofill,
+select:-moz-autofill {
+  -moz-text-fill-color: #111827;
+  box-shadow: 0 0 0 1000px #ffffff inset;        /* bg-white */
+}
 
+/* ===== Autofill DARK mode (scoperto su .dark) ===== */
+.dark input:-webkit-autofill,
+.dark input:-webkit-autofill:hover,
+.dark input:-webkit-autofill:focus,
+.dark textarea:-webkit-autofill,
+.dark select:-webkit-autofill {
+  -webkit-text-fill-color: #e5e7eb;             /* text-gray-300 */
+  -webkit-box-shadow: 0 0 0 1000px #262626 inset; /* bg-neutral-800 */
+  transition: background-color 9999s ease-in-out 0s;
+}
+.dark input:-moz-autofill,
+.dark textarea:-moz-autofill,
+.dark select:-moz-autofill {
+  -moz-text-fill-color: #e5e7eb;
+  box-shadow: 0 0 0 1000px #262626 inset;        /* bg-neutral-800 */
+}
 
 @layer base {
   * {

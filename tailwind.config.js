@@ -23,6 +23,10 @@ module.exports = {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'
   			},
+			brand: {
+  				DEFAULT: '#e29a0a',
+  				foreground: 'hsl(var(--card-foreground))'
+  			},
   			popover: {
   				DEFAULT: 'hsl(var(--popover))',
   				foreground: 'hsl(var(--popover-foreground))'
@@ -61,5 +65,6 @@ module.exports = {
   	}
   },
   plugins: [require("tailwindcss-animate")],
+  plugins: [require('@tailwindcss/forms')],
 }
 

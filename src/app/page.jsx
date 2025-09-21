@@ -3,8 +3,9 @@ import { ThemeToggle } from "./componenti/theme-toggle";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white dark:bg-green-900 text-black dark:text-white transition-all duration-300">
+    <div className="min-h-screen flex items-center justify-center transition-all duration-300">
       <div className="max-w-3xl text-center space-y-10">
+        <h1 className="text-6xl font-semibold"> HOMEPAGE SITO</h1>
         <h1 className="text-6xl font-semibold"> Next.js Dark Mode Tutorial</h1>
         <p>Lorem, ipsum dolor sit amet consectetur adipisicing elit.
           Aperiam sed, facilis ipsam voluptatum optio voluptates dolor harum fugiat
