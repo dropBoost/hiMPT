@@ -2,10 +2,16 @@
 import { useEffect, useState } from "react"
 import comuni from "@/app/componenti/comuni.json"
 import { supabase } from "@/lib/supabaseClient"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+import { FaFacebookSquare } from "react-icons/fa";
 
 export default function InserimentoUtenti(props) {
 
   const onDisplay = props.onDisplay
+  const dataOggi = new Date().toISOString().split("T")[0]
 
   //VARIABILI GESTIONE INSERIMENTO INDIRIZZO
   const [provincia, setProvincia] = useState([])
@@ -55,7 +61,7 @@ export default function InserimentoUtenti(props) {
 
   function handleChange(e) {
     const { name, value } = e.target
-    setFormData({ ...formData, [name]: value.toUpperCase() })
+    setFormData({ ...formData, [name]: value })
   }
 
   function handleChangeTelEmail(e) {
@@ -81,6 +87,45 @@ export default function InserimentoUtenti(props) {
     setCap([value])
   }
 
+  function handleChangeCodiceFiscale(e) {
+    const { name, value } = e.target
+
+    const v = value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "") 
+      .slice(0, 16)
+    
+      if(value.length > 16 ) {
+        alert(`maggiore di 16`)
+      } else {
+        setFormData(prev => ({ ...prev, [name]: v }))
+      }
+  }
+
+  function handleChangeDataNascita(e) {
+    const { name, value } = e.target
+      if(value > dataOggi ) {
+        alert(`Non è possibile impostare una data successiva ad oggi`)
+      } else {
+        setFormData(prev => ({ ...prev, [name]: value }))
+      }
+  }
+
+  function handleChangeCartaIdentita(e) {
+    const { name, value } = e.target
+
+    const v = value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "") 
+      .slice(0, 9)
+    
+      if(value.length > 9 ) {
+        alert(`maggiore di 9 caratteri`)
+      } else {
+        setFormData(prev => ({ ...prev, [name]: v }))
+      }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
 
@@ -97,32 +142,37 @@ export default function InserimentoUtenti(props) {
       email_cliente: formData.email || null,
       telefono_cliente: formData.telefono || null,
     }
+    
+    if (formData.nome === "" || formData.cognome === "" || formData.dataNascita === "" || formData.provincia === "" || formData.citta === "" || formData.cap === "" || formData.indirizzo === "" || formData.email === "" || formData.telefono === ""){
+      alert("Campi Vuoti")
+    } else if (formData.codiceFiscale.length !== 16){
+      alert(`lunghezza Codice Fiscale errata`)
+    } else if(formData.cartaIdentita.length !== 9){
+      alert(`lunghezza Carta Identità errata`)
+    } else {
+      const { data, error } = await supabase.from("clienti").insert(payload).select().single()
+      if (error) {
+        console.error(error)
+        alert(`Errore salvataggio: ${error.message}`)
+        return
+      }
+      setFormData({
+        nome: "",
+        cognome: "",
+        dataNascita: "",
+        provincia: "",
+        citta: "",
+        cap: "",
+        indirizzo: "",
+        cartaIdentita: "",
+        codiceFiscale: "",
+        email: "",
+        telefono: ""
+      })
 
-    const { data, error } = await supabase.from("clienti").insert(payload).select().single()
-
-    if (error) {
-      console.error(error)
-      alert(`Errore salvataggio: ${error.message}`)
-      return
+      console.log("Inserito:", data)
+      alert("Cliente inserito con successo!")
     }
-
-    console.log("Inserito:", data)
-    alert("Cliente inserito con successo!")
-
-    // reset soft (mantieni province/città/caricate, pulisci solo i valori)
-    setFormData({
-      nome: "",
-      cognome: "",
-      dataNascita: "",
-      provincia: "",
-      citta: "",
-      cap: "",
-      indirizzo: "",
-      cartaIdentita: "",
-      codiceFiscale: "",
-      email: "",
-      telefono: ""
-    })
   }
 
   return (
@@ -135,9 +185,9 @@ export default function InserimentoUtenti(props) {
           >
             <FormField nome="nome" label='Nome' value={formData.nome} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
             <FormField nome="cognome" label='Cognome' value={formData.cognome} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
-            <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
-            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
-            <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='date'/>
+            <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCartaIdentita} type='text'/>
+            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
+            <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeDataNascita} type='date'/>
             <FormSelect nome="provincia" label='Provincia' value={formData.provincia} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeProvincia} options={provinceSet}/>
             <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
             <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
@@ -155,52 +205,80 @@ export default function InserimentoUtenti(props) {
   )
 }
 
+// export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
+//   return (
+//     <>
+//     <div className={`${colspan} ${mdcolspan}`}>
+//       <label className="block text-sm font-semibold mb-1">{label}</label>
+//       <input
+//         type={type}
+//         name={nome}
+//         value={value}
+//         onChange={onchange}
+//         className="
+//         w-full rounded-lg px-3 py-2
+//         bg-white text-neutral-900 border border-neutral-300
+//         focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
+//         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
+//         dark:focus:ring-brand/40 dark:focus:border-brand
+//         "
+//       />
+//     </div>
+//     </>
+//   )
+// }
+
 export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
   return (
     <>
     <div className={`${colspan} ${mdcolspan}`}>
-      <label className="block text-sm font-semibold mb-1">{label}</label>
-      <input
-        type={type}
-        name={nome}
-        value={value}
-        onChange={onchange}
-        className="
-        w-full rounded-lg px-3 py-2
-        bg-white text-neutral-900 border border-neutral-300
-        focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
-        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
-        dark:focus:ring-brand/40 dark:focus:border-brand
-        "
-      />
+      <Label htmlFor={nome}>{label}</Label>
+      <Input type={type} id={nome} placeholder={label} name={nome} value={value}  onChange={onchange} className="
+        appearance-none
+        focus:outline-none
+        focus-visible:ring-2
+      focus-visible:ring-brand
+        focus-visible:ring-offset-2
+        focus-visible:ring-offset-background
+      focus-visible:border-brand
+          "/>
     </div>
     </>
   )
 }
 
-export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, options }) {
+export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, options = [] }) {
+  const handleValueChange = (val) => {
+    onchange?.({ target: { name: nome, value: val } })
+  }
+
   return (
-    <div className={`${colspan} ${mdcolspan}`}>
-      <label className="block text-sm font-semibold mb-1">{label}</label>
-      <select
-        name={nome}
-        value={value}
-        onChange={onchange}
-        className="
-        w-full rounded-lg px-3 py-2 appearance-none
-        bg-white text-neutral-900 border border-neutral-300
-        focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
-        dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
-        dark:focus:ring-brand/40 dark:focus:border-brand
-        "
-      >
-        <option value="">-- Seleziona {nome} --</option>
-        {options.map((opt, idx) => (
-          <option key={idx} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
+    <div className={`${colspan ?? ""} ${mdcolspan ?? ""}`}>
+      <label className="block text-sm font-semibold mb-1" htmlFor={nome}>
+        {label}
+      </label>
+
+      <Select value={value ?? ""} onValueChange={handleValueChange}>
+        <SelectTrigger id={nome} className="w-full rounded-lg">
+          <SelectValue placeholder={`-- Seleziona ${nome} --`} />
+        </SelectTrigger>
+
+        <SelectContent position="popper" className="z-[70]">
+          <SelectGroup>
+            {options.map((opt, idx) => (
+              <SelectItem key={idx} value={String(opt)} className="
+              data-[state=checked]:bg-brand
+              data-[state=checked]:text-foreground
+              focus:bg-brand
+          ">
+                {String(opt)}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+      <input type="hidden" name={nome} value={value ?? ""} />
     </div>
   )
 }
+
