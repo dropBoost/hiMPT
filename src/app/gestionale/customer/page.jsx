@@ -27,7 +27,7 @@ export default function Customer() {
         <ButtonSection click={ClickSectionOne} nome="INSERIMENTO UTENTI" section={onDisplaySectionOne}/>
         <ButtonSection click={ClickSectionTwo} nome="ELENCO UTENTI" section={onDisplaySectionTwo}/>
       </div>
-      <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border border-t rounded-none border-brand dark:bg-neutral-800/50 lg:rounded-2xl overflow-auto">
+      <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border lg:rounded-s-2xl lg:rounded-e-sm border-t rounded-none border-brand dark:bg-neutral-800/50 overflow-auto">
         <InserimentoUtenti onDisplay={onDisplaySectionOne}/>
         <ElencoUtenti onDisplay={onDisplaySectionTwo}/>
       </div>

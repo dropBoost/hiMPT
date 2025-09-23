@@ -1,0 +1,18 @@
+"use client"
+
+// nessuna import di ColumnDef
+
+export const columns = [
+  {
+    accessorKey: "status",
+    header: "Status",
+  },
+  {
+    accessorKey: "email",
+    header: "Email",
+  },
+  {
+    accessorKey: "amount",
+    header: "Amount",
+  },
+]

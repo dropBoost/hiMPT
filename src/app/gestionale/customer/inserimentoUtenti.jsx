@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { FaFacebookSquare } from "react-icons/fa";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import CustomScrollbar from "@/app/componenti/customeScrollbar"
 
 export default function InserimentoUtenti(props) {
 
@@ -18,33 +20,8 @@ export default function InserimentoUtenti(props) {
   const [citta, setCitta] = useState([])
   const [cittaSelezionata, setCittaSelezionata] = useState([])
   const [cap, setCap] = useState([])
-  
-  const province = comuni.flatMap(c => c.sigla)
-  const provinceSet = [...new Set(province)].sort()
-
-  useEffect(() => {
-
-    const cittaFiltrata = comuni
-    .filter(c => c.sigla === provincia)  
-    .map(c => c.nome)                     
-    .sort((a, b) => a.localeCompare(b))  
-
-    setCitta(cittaFiltrata)
-  }, [provincia])
-
-  
-
-  useEffect(() => {
-
-    const capFiltrati = comuni
-    .filter(c => c.nome === cittaSelezionata)  
-    .map(c => c.cap[0])                   
-    .sort((a, b) => a.localeCompare(b))  
-
-    setCap(capFiltrati)
-  }, [cittaSelezionata])
-
-  //GESTIONE FORM
+  const [clienti, setClienti] = useState([])
+  const [statusSend, setStatusSend] = useState(false)
   const [formData, setFormData] = useState({
     nome: "",
     cognome: "",
@@ -58,6 +35,33 @@ export default function InserimentoUtenti(props) {
     email: "",
     telefono: ""
   })
+  
+  const province = comuni.flatMap(c => c.sigla)
+  const provinceSet = [...new Set(province)].sort()
+
+  //INSERIMENTO UTENTE//
+
+  useEffect(() => {
+
+    const cittaFiltrata = comuni
+    .filter(c => c.sigla === provincia)  
+    .map(c => c.nome)                     
+    .sort((a, b) => a.localeCompare(b))  
+
+    setCitta(cittaFiltrata)
+  }, [provincia])
+
+  useEffect(() => {
+
+    const capFiltrati = comuni
+    .filter(c => c.nome === cittaSelezionata)  
+    .map(c => c.cap[0])                   
+    .sort((a, b) => a.localeCompare(b))  
+
+    setCap(capFiltrati)
+  }, [cittaSelezionata])
+
+
 
   function handleChange(e) {
     const { name, value } = e.target
@@ -155,29 +159,60 @@ export default function InserimentoUtenti(props) {
         console.error(error)
         alert(`Errore salvataggio: ${error.message}`)
         return
+      } else {
+        setFormData({
+          nome: "",
+          cognome: "",
+          dataNascita: "",
+          provincia: "",
+          citta: "",
+          cap: "",
+          indirizzo: "",
+          cartaIdentita: "",
+          codiceFiscale: "",
+          email: "",
+          telefono: ""
+        })
+
+        setStatusSend(prev => !prev)
+
       }
-      setFormData({
-        nome: "",
-        cognome: "",
-        dataNascita: "",
-        provincia: "",
-        citta: "",
-        cap: "",
-        indirizzo: "",
-        cartaIdentita: "",
-        codiceFiscale: "",
-        email: "",
-        telefono: ""
-      })
 
       console.log("Inserito:", data)
       alert("Cliente inserito con successo!")
     }
   }
 
+  //FINE INSERIMENTO UTENTE //
+
+  //DISPLAY ULTIMI 10 UTENTI //
+
+  useEffect(() => {
+    const fetchData = async () => {
+    const { data, error } = await supabase
+      .from("clienti")
+      .select("*")
+      .order("created_at_cliente", { ascending: false }) // ultimi inseriti prima
+      .limit(10)
+
+      if (error) {
+        console.error("Errore:", error)
+      } else {
+        setClienti(data)
+      }
+    }
+
+    fetchData()
+  }, [statusSend])
+
+  console.log(clienti)
+
+  // FINE DISPLAY ULTIMI 10 UTENTI //
+
   return (
     <>
-      <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3`}>
+    
+      <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
         <div className="">
           <form
             onSubmit={handleSubmit}
@@ -199,6 +234,49 @@ export default function InserimentoUtenti(props) {
               <button type="submit" className="bg-brand text-white px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition">Inserisci</button>
             </div>
           </form>
+        </div>
+        <div className="">
+          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">ULTIMI 10 CLIENTI INSERITI</h4>
+        </div>
+        <div className="border border-brand rounded-xl p-5">
+          <Table>
+            <TableCaption>... ultimi 10 clienti inseriti</TableCaption>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">Codice Fiscale</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead>Cognome</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Telefono</TableHead>
+                <TableHead className="text-right">Data Iscrizione</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {clienti.map ((cliente, index) => {
+
+                const data = new Date(cliente.created_at_cliente)
+                const dataFormattata = data.toLocaleString("it-IT", {
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  // hour: "2-digit",
+                  // minute: "2-digit",
+                })
+
+                return(
+                  <TableRow key={index}>
+                    <TableCell className="font-medium">{cliente.codice_fiscale_cliente}</TableCell>
+                    <TableCell>{cliente.nome_cliente}</TableCell>
+                    <TableCell>{cliente.cognome_cliente}</TableCell>
+                    <TableCell>{cliente.email_cliente}</TableCell>
+                    <TableCell>{cliente.telefono_cliente}</TableCell>
+                    <TableCell className="text-right">{dataFormattata}</TableCell>
+                    
+                  </TableRow>
+                )
+              })}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </>
