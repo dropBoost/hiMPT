@@ -3,7 +3,6 @@ import { useEffect, useState } from "react"
 import comuni from "@/app/componenti/comuni.json"
 import { supabase } from "@/lib/supabaseClient"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup} from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -11,7 +10,7 @@ import { FaFacebookSquare } from "react-icons/fa";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import CustomScrollbar from "@/app/componenti/customeScrollbar"
 
-export default function InserimentoUtenti(props) {
+export default function RegistrazionePagamenti(props) {
 
   const onDisplay = props.onDisplay
   const dataOggi = new Date().toISOString().split("T")[0]
@@ -34,8 +33,7 @@ export default function InserimentoUtenti(props) {
     cartaIdentita:"",
     codiceFiscale:"",
     email: "",
-    telefono: "",
-    attivo: false,
+    telefono: ""
   })
   
   const province = comuni.flatMap(c => c.sigla)
@@ -93,11 +91,6 @@ export default function InserimentoUtenti(props) {
     setCap([value])
   }
 
-  function handleChangeCheckbox(e) {
-  const { name, checked } = e.target
-  setFormData(prev => ({ ...prev, [name]: checked }))
-  }
-
   function handleChangeCodiceFiscale(e) {
     const { name, value } = e.target
 
@@ -152,7 +145,6 @@ export default function InserimentoUtenti(props) {
       codice_fiscale_cliente: formData.codiceFiscale || null,
       email_cliente: formData.email || null,
       telefono_cliente: formData.telefono || null,
-      attivo_cliente: formData.attivo,
     }
     
     if (formData.nome === "" || formData.cognome === "" || formData.dataNascita === "" || formData.provincia === "" || formData.citta === "" || formData.cap === "" || formData.indirizzo === "" || formData.email === "" || formData.telefono === ""){
@@ -179,8 +171,7 @@ export default function InserimentoUtenti(props) {
           cartaIdentita: "",
           codiceFiscale: "",
           email: "",
-          telefono: "",
-          attivo:false,
+          telefono: ""
         })
 
         setStatusSend(prev => !prev)
@@ -214,7 +205,6 @@ export default function InserimentoUtenti(props) {
     fetchData()
   }, [statusSend])
 
-  console.log(clienti)
 
   // FINE DISPLAY ULTIMI 10 UTENTI //
 
@@ -236,9 +226,9 @@ export default function InserimentoUtenti(props) {
             <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
             <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
             <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
+            
             <FormField nome="email" label='Email' value={formData.email} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
             <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
-            <FormCheckBox nome="attivo" label='Attivo' value={formData.attivo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeCheckbox} type='checkbox'/>
             <div className="col-span-12 flex justify-end">
               <button type="submit" className="bg-brand text-white px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition">Inserisci</button>
             </div>
@@ -292,6 +282,29 @@ export default function InserimentoUtenti(props) {
   )
 }
 
+// export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
+//   return (
+//     <>
+//     <div className={`${colspan} ${mdcolspan}`}>
+//       <label className="block text-sm font-semibold mb-1">{label}</label>
+//       <input
+//         type={type}
+//         name={nome}
+//         value={value}
+//         onChange={onchange}
+//         className="
+//         w-full rounded-lg px-3 py-2
+//         bg-white text-neutral-900 border border-neutral-300
+//         focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
+//         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
+//         dark:focus:ring-brand/40 dark:focus:border-brand
+//         "
+//       />
+//     </div>
+//     </>
+//   )
+// }
+
 export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
   return (
     <>
@@ -342,39 +355,6 @@ export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, o
         </SelectContent>
       </Select>
       <input type="hidden" name={nome} value={value ?? ""} />
-    </div>
-  )
-}
-
-export function FormCheckBox({
-  colspan,
-  mdcolspan,
-  nome,
-  label,
-  value,
-  onchange,
-}) {
-  return (
-    <div className={`${colspan} ${mdcolspan} flex flex-col items-start gap-2`}>
-      <Label htmlFor={nome}>{label}</Label>
-      <Checkbox
-        id={nome}
-        checked={!!value}
-        onCheckedChange={(checked) => {
-          const bool = checked === true
-          onchange?.({ target: { name: nome, checked: bool } })
-        }}
-        className="
-          h-4 w-4 rounded border border-gray-400
-          data-[state=checked]:bg-brand
-          data-[state=checked]:border-brand
-          focus-visible:outline-none
-          focus-visible:ring-2 focus-visible:ring-brand
-        "
-      />
-      
-
-      <input type="hidden" name={nome} value={value ? "true" : "false"} />
     </div>
   )
 }

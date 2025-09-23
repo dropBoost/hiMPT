@@ -2,12 +2,14 @@
 import { useEffect, useMemo, useState } from "react"
 import { supabase } from "@/lib/supabaseClient"
 import { FaUserSlash } from "react-icons/fa";
+import { HiPencilAlt } from "react-icons/hi";
+import { FaFileDownload } from "react-icons/fa";
+import { FaCircle, FaDotCircle } from "react-icons/fa";
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import {
-  Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
-import { FaFileDownload } from "react-icons/fa";
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+
+import ButtonDeleteRow from "@/app/componenti/buttonDeleteSup";
 
 export default function ElencoUtenti({ onDisplay }) {
   const [clienti, setClienti] = useState([])
@@ -89,6 +91,8 @@ export default function ElencoUtenti({ onDisplay }) {
     fetchData()
   }, [dataSearchSubmit, page, pageSize, from, to])
 
+  const iconaCestino = <FaUserSlash/>
+
   return (
     <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full h-full flex flex-col justify-between gap-3 p-3`}>
       {/* Barra ricerca */}
@@ -118,7 +122,8 @@ export default function ElencoUtenti({ onDisplay }) {
 
           <TableHeader>
             <TableRow>
-              <TableHead className="truncate">Codice Fiscale</TableHead>
+              <TableHead className="border-e border-brand text-center truncate">Stato</TableHead>
+              <TableHead className="text-right truncate">Codice Fiscale</TableHead>
               <TableHead className="truncate">Nome</TableHead>
               <TableHead className="truncate">Cognome</TableHead>
               <TableHead className="truncate">Città di Residenza</TableHead>
@@ -126,8 +131,9 @@ export default function ElencoUtenti({ onDisplay }) {
               <TableHead className="truncate">Telefono</TableHead>
               <TableHead className="truncate">Carta d'Identità</TableHead>
               <TableHead className="border-e border-brand truncate">Data Iscrizione</TableHead>
-              <TableHead className="text-center bg-neutral-300 text-neutral-700 truncate">Scheda Cliente</TableHead>
-              <TableHead className="text-center bg-neutral-300 text-neutral-700">Elimina</TableHead>
+              <TableHead className="text-center truncate">R</TableHead>
+              <TableHead className="text-center truncate">M</TableHead>
+              <TableHead className="text-center truncate">E</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -140,7 +146,12 @@ export default function ElencoUtenti({ onDisplay }) {
 
               return (
                 <TableRow key={`${cliente.uuid_cliente ?? index}`}>
-                  <TableCell className="font-medium">{cliente.codice_fiscale_cliente}</TableCell>
+                  <TableCell className="text-center border-e border-brand ">
+                    <div className=" flex flex-col justify-center items-center w-full h-full">
+                      {cliente.attivo_cliente ? <FaCircle className="text-green-700"/> : <FaDotCircle className="text-red-700"/>}
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium text-right">{cliente.codice_fiscale_cliente}</TableCell>
                   <TableCell>{cliente.nome_cliente}</TableCell>
                   <TableCell>{cliente.cognome_cliente}</TableCell>
                   <TableCell>{cliente.citta_cliente} - {cliente.provincia_cliente}</TableCell>
@@ -153,9 +164,23 @@ export default function ElencoUtenti({ onDisplay }) {
                     <FaFileDownload />
                     </div>
                   </TableCell>
+                  <TableCell className="hover:bg-brand/50 text-brand/70 hover:text-neutral-200">
+                    <div className=" flex flex-col justify-center items-center w-full h-full">
+                    <HiPencilAlt />
+                    </div>
+                  </TableCell>
                   <TableCell className="hover:bg-red-700 text-red-700 hover:text-neutral-200">
                     <div className=" flex flex-col justify-center items-center w-full h-full">
-                    <FaUserSlash/>
+                    <ButtonDeleteRow
+                      uuid={cliente.uuid_cliente}
+                      tabella="clienti"
+                      nomeAttributo="uuid_cliente"
+                      icona={<FaUserSlash/>}
+                      confirmMessage="Sei sicuro di eliminare questo cliente?"
+                      onDeleted={(id) =>
+                        setClienti(prev => prev.filter(c => c.uuid_cliente !== id))
+                      }
+                    />
                     </div>
                   </TableCell>
 
