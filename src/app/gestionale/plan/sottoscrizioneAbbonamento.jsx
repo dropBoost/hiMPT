@@ -355,7 +355,7 @@ export default function SottoscrizioniAbbonamenti(props) {
                 form="formSottoscrizioni"
                 type="submit"
                 disabled={loading}
-                className="bg-brand text-white px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
+                className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
               >
                 {loading ? "Salvataggio..." : "Inserisci"}
               </button>
@@ -399,7 +399,7 @@ export default function SottoscrizioniAbbonamenti(props) {
                 form="formPianoAbbonamento"
                 type="submit"
                 disabled={loadingPianoAbbonamento}
-                className="bg-brand text-white px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
+                className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
                 >
                 {loadingPianoAbbonamento ? "Salvataggio..." : "Inserisci"}
                 </button>

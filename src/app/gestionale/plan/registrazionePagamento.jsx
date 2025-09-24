@@ -1,276 +1,325 @@
 'use client'
 import { useEffect, useState } from "react"
-import comuni from "@/app/componenti/comuni.json"
 import { supabase } from "@/lib/supabaseClient"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { FaFacebookSquare } from "react-icons/fa";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import CustomScrollbar from "@/app/componenti/customeScrollbar"
+import { Button } from "@/components/ui/button"
+import { VscDebugRestart } from "react-icons/vsc";
+import { TiDelete } from "react-icons/ti";
+
+
 
 export default function RegistrazionePagamenti(props) {
-
   const onDisplay = props.onDisplay
-  const dataOggi = new Date().toISOString().split("T")[0]
 
-  //VARIABILI GESTIONE INSERIMENTO INDIRIZZO
-  const [provincia, setProvincia] = useState([])
-  const [citta, setCitta] = useState([])
-  const [cittaSelezionata, setCittaSelezionata] = useState([])
-  const [cap, setCap] = useState([])
-  const [clienti, setClienti] = useState([])
-  const [statusSend, setStatusSend] = useState(false)
-  const [formData, setFormData] = useState({
-    nome: "",
-    cognome: "",
-    dataNascita: "",
-    provincia: "",
-    citta: "",
-    cap:"",
-    indirizzo:"",
-    cartaIdentita:"",
-    codiceFiscale:"",
-    email: "",
-    telefono: ""
+  const [sottoscrizioni, setSottoscrizioni] = useState([])
+  const [pagamentiEffettuati, setPagamentiEffettuati] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [sceltaSottoscrizione, setSceltaSottoscrizione] = useState(false)
+  const [loadingPagamentoAbbonamento, setLoadingPagamentoAbbonamento] = useState(false)
+
+  const [pagamentoAbbonamento, setPagamentoAbbonamento] = useState({
+    sotUuid:"",
+    mesePagamento:"",
+    annoPagamento:"",
+    notePagamento:"",
   })
-  
-  const province = comuni.flatMap(c => c.sigla)
-  const provinceSet = [...new Set(province)].sort()
 
-  //INSERIMENTO UTENTE//
+  console.log(pagamentoAbbonamento.sotUuid)
 
+  // Carica le sottoscrizioni
   useEffect(() => {
+    ;(async () => {
+      const { data: sottoscrizioniData, error } = await supabase
+        .from("sottoscrizioni")
+        .select(`
+            uuid_sottoscrizione,
+            data_inizio_sottoscrizione,
+            data_fine_sottoscrizione,
+            created_at_sottoscrizione,
+            cliente:clienti (
+                nome_cliente,
+                cognome_cliente
+            )`)
+        .eq("attivo_sottoscrizione", true)
+        .order("created_at_sottoscrizione", { ascending: false })
 
-    const cittaFiltrata = comuni
-    .filter(c => c.sigla === provincia)  
-    .map(c => c.nome)                     
-    .sort((a, b) => a.localeCompare(b))  
-
-    setCitta(cittaFiltrata)
-  }, [provincia])
-
-  useEffect(() => {
-
-    const capFiltrati = comuni
-    .filter(c => c.nome === cittaSelezionata)  
-    .map(c => c.cap[0])                   
-    .sort((a, b) => a.localeCompare(b))  
-
-    setCap(capFiltrati)
-  }, [cittaSelezionata])
-
-
-
-  function handleChange(e) {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-  }
-
-  function handleChangeTelEmail(e) {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-  }
-
-  function handleChangeProvincia(e) {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    setProvincia(value)
-  }
-
-  function handleChangeCitta(e) {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    setCittaSelezionata(value)
-  }
-
-  function handleChangeCap(e) {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
-    setCap([value])
-  }
-
-  function handleChangeCodiceFiscale(e) {
-    const { name, value } = e.target
-
-    const v = value
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "") 
-      .slice(0, 16)
-    
-      if(value.length > 16 ) {
-        alert(`maggiore di 16`)
-      } else {
-        setFormData(prev => ({ ...prev, [name]: v }))
-      }
-  }
-
-  function handleChangeDataNascita(e) {
-    const { name, value } = e.target
-      if(value > dataOggi ) {
-        alert(`Non è possibile impostare una data successiva ad oggi`)
-      } else {
-        setFormData(prev => ({ ...prev, [name]: value }))
-      }
-  }
-
-  function handleChangeCartaIdentita(e) {
-    const { name, value } = e.target
-
-    const v = value
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "") 
-      .slice(0, 9)
-    
-      if(value.length > 9 ) {
-        alert(`maggiore di 9 caratteri`)
-      } else {
-        setFormData(prev => ({ ...prev, [name]: v }))
-      }
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-
-    const payload = {
-      nome_cliente: formData.nome || null,
-      cognome_cliente: formData.cognome || null,
-      data_nascita_cliente: formData.dataNascita || null,
-      provincia_cliente: formData.provincia || null,           
-      citta_cliente: formData.citta || null,
-      cap_cliente: formData.cap || null,
-      indirizzo_cliente: formData.indirizzo || null,
-      carta_identita_cliente: formData.cartaIdentita || null,
-      codice_fiscale_cliente: formData.codiceFiscale || null,
-      email_cliente: formData.email || null,
-      telefono_cliente: formData.telefono || null,
-    }
-    
-    if (formData.nome === "" || formData.cognome === "" || formData.dataNascita === "" || formData.provincia === "" || formData.citta === "" || formData.cap === "" || formData.indirizzo === "" || formData.email === "" || formData.telefono === ""){
-      alert("Campi Vuoti")
-    } else if (formData.codiceFiscale.length !== 16){
-      alert(`lunghezza Codice Fiscale errata`)
-    } else if(formData.cartaIdentita.length !== 9){
-      alert(`lunghezza Carta Identità errata`)
-    } else {
-      const { data, error } = await supabase.from("clienti").insert(payload).select().single()
       if (error) {
         console.error(error)
-        alert(`Errore salvataggio: ${error.message}`)
+        console.error("Errore nel caricamento delle sottoscrizioni")
         return
-      } else {
-        setFormData({
-          nome: "",
-          cognome: "",
-          dataNascita: "",
-          provincia: "",
-          citta: "",
-          cap: "",
-          indirizzo: "",
-          cartaIdentita: "",
-          codiceFiscale: "",
-          email: "",
-          telefono: ""
-        })
-
-        setStatusSend(prev => !prev)
-
       }
+      setSottoscrizioni(sottoscrizioniData ?? [])
+    })()
+  }, [loading])
 
-      console.log("Inserito:", data)
-      alert("Cliente inserito con successo!")
-    }
+
+  /////////////LAVORANDO SULLA QUERY PER ESTRAPOLARE I PAGAMENTI EFFETTUATI DA UN CLIENTE SELEZIONATO
+  // Carica i pagamenti
+  useEffect(() => {
+  const sotUuid = pagamentoAbbonamento.sotUuid
+  if (!sotUuid) {
+    setPagamentiEffettuati([])
+    return
   }
 
-  //FINE INSERIMENTO UTENTE //
-
-  //DISPLAY ULTIMI 10 UTENTI //
-
-  useEffect(() => {
-    const fetchData = async () => {
+  ;(async () => {
     const { data, error } = await supabase
-      .from("clienti")
-      .select("*")
-      .order("created_at_cliente", { ascending: false }) // ultimi inseriti prima
-      .limit(10)
+      .from("pagamenti")
+      .select(`
+        uuid_sottoscrizione,
+        mese_pagamento_pagamenti,
+        anno_pagamento_pagamenti,
+        note_pagamento,
+        created_at_pagamento,
+        sottoscrizioni!inner (
+          uuid_sottoscrizione,
+          created_at_sottoscrizione,
+          clienti (
+            nome_cliente,
+            cognome_cliente
+          )
+        )
+      `)
+      .eq("uuid_sottoscrizione", pagamentoAbbonamento.sotUuid)
+      .order("created_at_pagamento", { ascending: false })
 
-      if (error) {
-        console.error("Errore:", error)
-      } else {
-        setClienti(data)
-      }
+    if (error) {
+      console.error(error)
+      console.error("Errore nel caricamento dei pagamenti")
+      return
     }
 
-    fetchData()
-  }, [statusSend])
+    setPagamentiEffettuati(data ?? [])
+  })()
+}, [sceltaSottoscrizione])
 
+  const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
+    const data = new Date(sot.created_at_sottoscrizione)
+    const dataFormattata = data.toLocaleDateString("it-IT", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    })
 
-  // FINE DISPLAY ULTIMI 10 UTENTI //
+    return {
+      value: sot.uuid_sottoscrizione,
+      label: `${sot.cliente.cognome_cliente} ${sot.cliente.nome_cliente} - ${dataFormattata}`
+    }
+  })
+
+  const opzioniMese = [
+  {
+    value: "01",
+    label: "Gennaio",
+  },
+  {
+    value: "02",
+    label: "Febbraio",
+  },
+  {
+    value: "03",
+    label: "Marzo",
+  },
+  {
+    value: "04",
+    label: "Aprile",
+  },
+  {
+    value: "05",
+    label: "Maggio",
+  },
+  {
+    value: "06",
+    label: "Giugno",
+  },
+  {
+    value: "07",
+    label: "Luglio",
+  },
+  {
+    value: "08",
+    label: "Agosto",
+  },
+  {
+    value: "09",
+    label: "Settembre",
+  },
+  {
+    value: "10",
+    label: "Ottobre",
+  },
+  {
+    value: "11",
+    label: "Novembre",
+  },
+  {
+    value: "12",
+    label: "Dicembre",
+  },
+  ]
+
+  function getOpzioniAnni(range = 2) {
+    const currentYear = new Date().getFullYear()
+    const start = currentYear - range
+    const end = currentYear + range
+
+    return Array.from({ length: end - start + 1 }, (_, i) => {
+      const year = start + i
+      return { value: String(year), label: String(year) }
+    })
+  }
+
+  function handleChangePagamentoAbbonamento(e) {
+    const { name, value } = e.target
+    setPagamentoAbbonamento(prev => ({ ...prev, [name]: value }))
+  }
+
+  function handleChangeSelectSottoscrizione(e) {
+    const { name, value } = e.target
+    setPagamentoAbbonamento(prev => ({ ...prev, [name]: value }))
+    setSceltaSottoscrizione((prev => !prev))
+  }
+
+  async function handleSubmitPagamentoAbbonamento(e) {
+    e.preventDefault()
+
+    const payloadPagamento = {
+      uuid_sottoscrizione: pagamentoAbbonamento.sotUuid,
+      mese_pagamento_pagamenti: pagamentoAbbonamento.mesePagamento,
+      anno_pagamento_pagamenti: pagamentoAbbonamento.annoPagamento || null,
+      note_pagamento: pagamentoAbbonamento.notePagamento,
+    }
+
+    setLoadingPagamentoAbbonamento(true)
+    const { data, error } = await supabase
+      .from('pagamenti')
+      .insert(payloadPagamento)
+      .select()
+      .single()
+    setLoadingPagamentoAbbonamento(false)
+
+    if (error) {
+      console.error(error)
+      toast.error(`Errore salvataggio: ${error.message}`)
+      return
+    }
+
+    setSceltaSottoscrizione((prev => !prev))
+
+    console.log("Inserito:", data)
+    toast.success("Piano Abbonamento inserito con successo!")
+
+  }
+
+  function resetFormPagamento () {
+      setPagamentoAbbonamento(
+      {
+        sotUuid:"",
+        mesePagamento: "",
+        annoPagamento: "",
+        notePagamento: "",
+      }
+      
+    )
+    setSceltaSottoscrizione((prev => !prev))
+  }
 
   return (
     <>
-    
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
-        <div className="">
-          <form
-            onSubmit={handleSubmit}
-            className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg"
-          >
-            <FormField nome="nome" label='Nome' value={formData.nome} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
-            <FormField nome="cognome" label='Cognome' value={formData.cognome} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
-            <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCartaIdentita} type='text'/>
-            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
-            <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeDataNascita} type='date'/>
-            <FormSelect nome="provincia" label='Provincia' value={formData.provincia} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeProvincia} options={provinceSet}/>
-            <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
-            <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
-            <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
-            
-            <FormField nome="email" label='Email' value={formData.email} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
-            <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
-            <div className="col-span-12 flex justify-end">
-              <button type="submit" className="bg-brand text-white px-6 py-2 rounded-xl font-semibold hover:opacity-90 transition">Inserisci</button>
+        <div>
+          <form id="formPagamentoAbbonamento" onSubmit={handleSubmitPagamentoAbbonamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
+            <FormSelect
+              nome="sotUuid"
+              label="Sottoscrizione"
+              value={pagamentoAbbonamento.sotUuid}
+              colspan="col-span-12"
+              mdcolspan="lg:col-span-4"
+              onchange={handleChangeSelectSottoscrizione}
+              options={opzioniSottoscrizioni}
+            />
+            <FormSelect
+              nome="mesePagamento"
+              label="Mese"
+              value={pagamentoAbbonamento.mesePagamento}
+              colspan="col-span-12"
+              mdcolspan="lg:col-span-2"
+              onchange={handleChangePagamentoAbbonamento}
+              options={opzioniMese}
+            />
+            <FormSelect
+              nome="annoPagamento"
+              label="Anno"
+              value={pagamentoAbbonamento.annoPagamento}
+              colspan="col-span-12"
+              mdcolspan="lg:col-span-2"
+              onchange={handleChangePagamentoAbbonamento}
+              options={getOpzioniAnni(2)}
+            />
+            <FormField nome="notePagamento" label='Note' value={pagamentoAbbonamento.notePagamento} colspan="col-span-12" mdcolspan="lg:col-span-4" onchange={handleChangePagamentoAbbonamento} type='text'/>
+            <div className="col-span-12 flex justify-end gap-2">
+                <button
+                form="formPagamentoAbbonamento"
+                type="submit"
+                disabled={loadingPagamentoAbbonamento}
+                className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
+                >
+                {loadingPagamentoAbbonamento ? "Salvataggio..." : "Inserisci"}
+                </button>
+                <button
+                onClick={resetFormPagamento}
+                className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
+                >
+                {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
+                </button>
             </div>
-          </form>
+            </form>
         </div>
-        <div className="">
-          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">ULTIMI 10 CLIENTI INSERITI</h4>
+
+        <div>
+          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
+            PIANO ABBONAMENTO
+          </h4>
         </div>
+
         <div className="border border-brand rounded-xl p-5">
-          <Table>
+        <Table>
             <TableCaption>... ultimi 10 clienti inseriti</TableCaption>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">Codice Fiscale</TableHead>
-                <TableHead>Nome</TableHead>
-                <TableHead>Cognome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Telefono</TableHead>
-                <TableHead className="text-right">Data Iscrizione</TableHead>
+                <TableHead>Nome e Cognome</TableHead>
+                <TableHead className="text-left">Note</TableHead>
+                <TableHead className="text-right">Data Pagamento</TableHead>
+                <TableHead className="text-right">Inizio Sottoscrizione</TableHead>
+                
               </TableRow>
             </TableHeader>
             <TableBody>
-              {clienti.map ((cliente, index) => {
+              {pagamentiEffettuati.map ((pagamento, index) => {
 
-                const data = new Date(cliente.created_at_cliente)
-                const dataFormattata = data.toLocaleString("it-IT", {
-                  year: "numeric",
-                  month: "2-digit",
-                  day: "2-digit",
-                  // hour: "2-digit",
-                  // minute: "2-digit",
-                })
-
+                function conversioneData (x) {
+                  const data = new Date(x)
+                  const dataFormattata = data.toLocaleString("it-IT", {
+                    year: "numeric",
+                    month: "2-digit",
+                    day: "2-digit",
+                    // hour: "2-digit",
+                    // minute: "2-digit",
+                  })
+                  return dataFormattata
+                }
                 return(
+
                   <TableRow key={index}>
-                    <TableCell className="font-medium">{cliente.codice_fiscale_cliente}</TableCell>
-                    <TableCell>{cliente.nome_cliente}</TableCell>
-                    <TableCell>{cliente.cognome_cliente}</TableCell>
-                    <TableCell>{cliente.email_cliente}</TableCell>
-                    <TableCell>{cliente.telefono_cliente}</TableCell>
-                    <TableCell className="text-right">{dataFormattata}</TableCell>
-                    
+                    <TableCell className="font-medium">{pagamento.sottoscrizioni.clienti.nome_cliente} {pagamento.sottoscrizioni.clienti.cognome_cliente}</TableCell>
+                    <TableCell className="text-left font-medium">{pagamento.note_pagamento}</TableCell>
+                    <TableCell className="text-right">{conversioneData(pagamento.created_at_pagamento)}</TableCell>
+                    <TableCell className="text-right">{conversioneData(pagamento.sottoscrizioni.created_at_sottoscrizione)}</TableCell>
                   </TableRow>
                 )
               })}
@@ -282,45 +331,28 @@ export default function RegistrazionePagamenti(props) {
   )
 }
 
-// export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
-//   return (
-//     <>
-//     <div className={`${colspan} ${mdcolspan}`}>
-//       <label className="block text-sm font-semibold mb-1">{label}</label>
-//       <input
-//         type={type}
-//         name={nome}
-//         value={value}
-//         onChange={onchange}
-//         className="
-//         w-full rounded-lg px-3 py-2
-//         bg-white text-neutral-900 border border-neutral-300
-//         focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand
-//         dark:bg-neutral-800 dark:text-neutral-100 dark:border-neutral-700
-//         dark:focus:ring-brand/40 dark:focus:border-brand
-//         "
-//       />
-//     </div>
-//     </>
-//   )
-// }
-
-export function FormField ({colspan, mdcolspan, nome,label, value, onchange, type}) {
+export function FormField({ colspan, mdcolspan, nome, label, value, onchange, type }) {
   return (
-    <>
     <div className={`${colspan} ${mdcolspan}`}>
       <Label htmlFor={nome}>{label}</Label>
-      <Input type={type} id={nome} placeholder={label} name={nome} value={value}  onChange={onchange} className="
-        appearance-none
-        focus:outline-none
-        focus-visible:ring-2
-      focus-visible:ring-brand
-        focus-visible:ring-offset-2
-        focus-visible:ring-offset-background
-      focus-visible:border-brand
-          "/>
+      <Input
+        type={type}
+        id={nome}
+        placeholder={label}
+        name={nome}
+        value={value ?? ""}
+        onChange={onchange}
+        className="
+          appearance-none
+          focus:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-brand
+          focus-visible:ring-offset-2
+          focus-visible:ring-offset-background
+          focus-visible:border-brand
+        "
+      />
     </div>
-    </>
   )
 }
 
@@ -337,25 +369,55 @@ export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, o
 
       <Select value={value ?? ""} onValueChange={handleValueChange}>
         <SelectTrigger id={nome} className="w-full rounded-lg">
-          <SelectValue placeholder={`-- Seleziona ${nome} --`} />
+          <SelectValue placeholder={`-- Seleziona ${label} --`} />
         </SelectTrigger>
 
         <SelectContent position="popper" className="z-[70]">
           <SelectGroup>
-            {options.map((opt, idx) => (
-              <SelectItem key={idx} value={String(opt)} className="
-              data-[state=checked]:bg-brand
-              data-[state=checked]:text-foreground
-              focus:bg-brand
-          ">
-                {String(opt)}
+            {options.map((opt) => (
+              <SelectItem
+                key={opt.value}
+                value={opt.value}
+                className="
+                  data-[state=checked]:bg-brand
+                  data-[state=checked]:text-foreground
+                  focus:bg-brand
+                "
+              >
+                {opt.label}
               </SelectItem>
             ))}
           </SelectGroup>
         </SelectContent>
       </Select>
+
+      {/* Mantiene la compatibilità con eventuali handler generici basati su submit */}
       <input type="hidden" name={nome} value={value ?? ""} />
     </div>
   )
 }
 
+export function FormTextarea({ colspan, mdcolspan, nome, label, value, onchange, rows = 4 }) {
+  return (
+    <div className={`${colspan} ${mdcolspan}`}>
+      <Label htmlFor={nome}>{label}</Label>
+      <Textarea
+        id={nome}
+        name={nome}
+        placeholder={label}
+        value={value ?? ""}
+        onChange={onchange}
+        rows={rows}
+        className="
+          appearance-none
+          focus:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-brand
+          focus-visible:ring-offset-2
+          focus-visible:ring-offset-background
+          focus-visible:border-brand
+        "
+      />
+    </div>
+  )
+}
