@@ -11,101 +11,106 @@ import { Button } from "@/components/ui/button"
 import { VscDebugRestart } from "react-icons/vsc";
 import { TiDelete } from "react-icons/ti";
 
-
-
 export default function RegistrazionePagamenti(props) {
   const onDisplay = props.onDisplay
 
   const [sottoscrizioni, setSottoscrizioni] = useState([])
-  const [pagamentiEffettuati, setPagamentiEffettuati] = useState([])
+  const [pianoAttivo, setPianoAttivo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [sceltaSottoscrizione, setSceltaSottoscrizione] = useState(false)
   const [loadingPagamentoAbbonamento, setLoadingPagamentoAbbonamento] = useState(false)
 
   const [pagamentoAbbonamento, setPagamentoAbbonamento] = useState({
-    sotUuid:"",
-    mesePagamento:"",
-    annoPagamento:"",
-    notePagamento:"",
+    sotUuid:"", mesePagamento:"", annoPagamento:"", notePagamento:"",
   })
 
-  console.log(pagamentoAbbonamento.sotUuid)
+  // util formattazione data
+  function conversioneData(x) {
+    if (!x) return ""
+    const d = new Date(x)
+    return d.toLocaleString("it-IT", { year:"numeric", month:"2-digit", day:"2-digit" })
+  }
 
-  // Carica le sottoscrizioni
+  // Carica le sottoscrizioni attive
   useEffect(() => {
     ;(async () => {
       const { data: sottoscrizioniData, error } = await supabase
         .from("sottoscrizioni")
         .select(`
-            uuid_sottoscrizione,
-            data_inizio_sottoscrizione,
-            data_fine_sottoscrizione,
-            created_at_sottoscrizione,
-            cliente:clienti (
-                nome_cliente,
-                cognome_cliente
-            )`)
+          uuid_sottoscrizione,
+          data_inizio_sottoscrizione,
+          data_fine_sottoscrizione,
+          created_at_sottoscrizione,
+          cliente:clienti (
+            nome_cliente,
+            cognome_cliente
+          )
+        `)
         .eq("attivo_sottoscrizione", true)
         .order("created_at_sottoscrizione", { ascending: false })
 
       if (error) {
         console.error(error)
-        console.error("Errore nel caricamento delle sottoscrizioni")
+        toast.error("Errore nel caricamento delle sottoscrizioni")
         return
       }
       setSottoscrizioni(sottoscrizioniData ?? [])
     })()
   }, [loading])
 
-
-  /////////////LAVORANDO SULLA QUERY PER ESTRAPOLARE I PAGAMENTI EFFETTUATI DA UN CLIENTE SELEZIONATO
-  // Carica i pagamenti
+  // Carica il piano più recente per la sottoscrizione selezionata
   useEffect(() => {
-  const sotUuid = pagamentoAbbonamento.sotUuid
-  if (!sotUuid) {
-    setPagamentiEffettuati([])
-    return
-  }
-
-  ;(async () => {
-    const { data, error } = await supabase
-      .from("pagamenti")
-      .select(`
-        uuid_sottoscrizione,
-        mese_pagamento_pagamenti,
-        anno_pagamento_pagamenti,
-        note_pagamento,
-        created_at_pagamento,
-        sottoscrizioni!inner (
-          uuid_sottoscrizione,
-          created_at_sottoscrizione,
-          clienti (
-            nome_cliente,
-            cognome_cliente
-          )
-        )
-      `)
-      .eq("uuid_sottoscrizione", pagamentoAbbonamento.sotUuid)
-      .order("created_at_pagamento", { ascending: false })
-
-    if (error) {
-      console.error(error)
-      console.error("Errore nel caricamento dei pagamenti")
+    const sotUuid = pagamentoAbbonamento.sotUuid
+    if (!sotUuid) {
+      setPianoAttivo(null)
       return
     }
 
-    setPagamentiEffettuati(data ?? [])
-  })()
-}, [sceltaSottoscrizione])
+    ;(async () => {
+      const { data, error } = await supabase
+        .from("piano_abbonamento")
+        .select(`
+          uuid_sottoscrizione,
+          tipologia_abbonamento,
+          costo_abbonamento,
+          sconto_abbonamento,
+          note_abbonamento,
+          created_at_abbonamento,
+          sottoscrizioni!inner (
+            uuid_sottoscrizione,
+            data_inizio_sottoscrizione,
+            data_fine_sottoscrizione,
+            attivo_sottoscrizione,
+            clienti (
+              nome_cliente,
+              cognome_cliente
+            ),
+            pagamenti (
+              mese_pagamento_pagamenti,
+              anno_pagamento_pagamenti,
+              created_at_pagamento,
+              note_pagamento
+            )
+          )
+        `)
+        .eq("uuid_sottoscrizione", sotUuid)
+        .order("created_at_abbonamento", { ascending: false, nullsFirst: false }) // più recente in cima
+        .limit(1)
+        .maybeSingle() // se nessun record, data = null
+
+      if (error) {
+        console.error(error)
+        toast.error("Errore nel caricamento del piano abbonamento")
+        return
+      }
+
+      setPianoAttivo(data) // 👈 oggetto o null
+    })()
+  }, [sceltaSottoscrizione, pagamentoAbbonamento.sotUuid]) // dipende anche dall'UUID selezionato
 
   const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
     const data = new Date(sot.created_at_sottoscrizione)
-    const dataFormattata = data.toLocaleDateString("it-IT", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    })
-
+    const dataFormattata = data.toLocaleDateString("it-IT", { year:"numeric", month:"2-digit", day:"2-digit" })
     return {
       value: sot.uuid_sottoscrizione,
       label: `${sot.cliente.cognome_cliente} ${sot.cliente.nome_cliente} - ${dataFormattata}`
@@ -113,61 +118,16 @@ export default function RegistrazionePagamenti(props) {
   })
 
   const opzioniMese = [
-  {
-    value: "01",
-    label: "Gennaio",
-  },
-  {
-    value: "02",
-    label: "Febbraio",
-  },
-  {
-    value: "03",
-    label: "Marzo",
-  },
-  {
-    value: "04",
-    label: "Aprile",
-  },
-  {
-    value: "05",
-    label: "Maggio",
-  },
-  {
-    value: "06",
-    label: "Giugno",
-  },
-  {
-    value: "07",
-    label: "Luglio",
-  },
-  {
-    value: "08",
-    label: "Agosto",
-  },
-  {
-    value: "09",
-    label: "Settembre",
-  },
-  {
-    value: "10",
-    label: "Ottobre",
-  },
-  {
-    value: "11",
-    label: "Novembre",
-  },
-  {
-    value: "12",
-    label: "Dicembre",
-  },
+    { value:"01", label:"Gennaio" }, { value:"02", label:"Febbraio" }, { value:"03", label:"Marzo" },
+    { value:"04", label:"Aprile" },  { value:"05", label:"Maggio" },   { value:"06", label:"Giugno" },
+    { value:"07", label:"Luglio" },  { value:"08", label:"Agosto" },   { value:"09", label:"Settembre" },
+    { value:"10", label:"Ottobre" }, { value:"11", label:"Novembre" }, { value:"12", label:"Dicembre" },
   ]
 
   function getOpzioniAnni(range = 2) {
     const currentYear = new Date().getFullYear()
     const start = currentYear - range
     const end = currentYear + range
-
     return Array.from({ length: end - start + 1 }, (_, i) => {
       const year = start + i
       return { value: String(year), label: String(year) }
@@ -182,7 +142,7 @@ export default function RegistrazionePagamenti(props) {
   function handleChangeSelectSottoscrizione(e) {
     const { name, value } = e.target
     setPagamentoAbbonamento(prev => ({ ...prev, [name]: value }))
-    setSceltaSottoscrizione((prev => !prev))
+    setSceltaSottoscrizione(prev => !prev) // forza il reload
   }
 
   async function handleSubmitPagamentoAbbonamento(e) {
@@ -209,26 +169,22 @@ export default function RegistrazionePagamenti(props) {
       return
     }
 
-    setSceltaSottoscrizione((prev => !prev))
-
-    console.log("Inserito:", data)
-    toast.success("Piano Abbonamento inserito con successo!")
-
+    setSceltaSottoscrizione(prev => !prev) // ricarica piano/pagamenti
+    toast.success("Pagamento inserito con successo!")
   }
 
   function resetFormPagamento () {
-      setPagamentoAbbonamento(
-      {
-        sotUuid:"",
-        mesePagamento: "",
-        annoPagamento: "",
-        notePagamento: "",
-      }
-      
-    )
-    setSceltaSottoscrizione((prev => !prev))
+    setPagamentoAbbonamento({ sotUuid:"", mesePagamento:"", annoPagamento:"", notePagamento:"" })
+    setSceltaSottoscrizione(prev => !prev)
   }
 
+  const pagamenti = [...(pianoAttivo?.sottoscrizioni?.pagamenti ?? [])]
+  .sort((a, b) =>
+    (b.anno_pagamento_pagamenti ?? 0) - (a.anno_pagamento_pagamenti ?? 0) ||
+    parseInt(b.mese_pagamento_pagamenti ?? "0", 10) - parseInt(a.mese_pagamento_pagamenti ?? "0", 10)
+  )
+  const cliente = pianoAttivo?.sottoscrizioni?.clienti
+  console.log(pagamenti)
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
@@ -236,7 +192,7 @@ export default function RegistrazionePagamenti(props) {
           <form id="formPagamentoAbbonamento" onSubmit={handleSubmitPagamentoAbbonamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
             <FormSelect
               nome="sotUuid"
-              label="Sottoscrizione"
+              label="Piano Abbonamento"
               value={pagamentoAbbonamento.sotUuid}
               colspan="col-span-12"
               mdcolspan="lg:col-span-4"
@@ -262,67 +218,73 @@ export default function RegistrazionePagamenti(props) {
               options={getOpzioniAnni(2)}
             />
             <FormField nome="notePagamento" label='Note' value={pagamentoAbbonamento.notePagamento} colspan="col-span-12" mdcolspan="lg:col-span-4" onchange={handleChangePagamentoAbbonamento} type='text'/>
+
             <div className="col-span-12 flex justify-end gap-2">
-                <button
+              <button
                 form="formPagamentoAbbonamento"
                 type="submit"
                 disabled={loadingPagamentoAbbonamento}
                 className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
-                >
+              >
                 {loadingPagamentoAbbonamento ? "Salvataggio..." : "Inserisci"}
-                </button>
-                <button
+              </button>
+              <button
+                type="button"
                 onClick={resetFormPagamento}
                 className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
-                >
+              >
                 {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
-                </button>
+              </button>
             </div>
-            </form>
+          </form>
         </div>
 
         <div>
-          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
-            PIANO ABBONAMENTO
+          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
+            PAGAMENTI EFFETTUATI
           </h4>
         </div>
 
         <div className="border border-brand rounded-xl p-5">
-        <Table>
-            <TableCaption>... ultimi 10 clienti inseriti</TableCaption>
+          <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Nome e Cognome</TableHead>
                 <TableHead className="text-left">Note</TableHead>
+                <TableHead className="text-right">Mensilità Pagata</TableHead>
                 <TableHead className="text-right">Data Pagamento</TableHead>
                 <TableHead className="text-right">Inizio Sottoscrizione</TableHead>
-                
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {pagamentiEffettuati.map ((pagamento, index) => {
-
-                function conversioneData (x) {
-                  const data = new Date(x)
-                  const dataFormattata = data.toLocaleString("it-IT", {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    // hour: "2-digit",
-                    // minute: "2-digit",
-                  })
-                  return dataFormattata
-                }
-                return(
-
+              {(!pianoAttivo || pagamenti.length === 0) ? (
+                <TableRow>
+                  <TableCell colSpan={4} className="text-center text-sm italic">
+                    {pianoAttivo ? "Nessun pagamento registrato" : "Seleziona un piano abbonamento"}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                pagamenti.map((pagamento, index) => (
                   <TableRow key={index}>
-                    <TableCell className="font-medium">{pagamento.sottoscrizioni.clienti.nome_cliente} {pagamento.sottoscrizioni.clienti.cognome_cliente}</TableCell>
-                    <TableCell className="text-left font-medium">{pagamento.note_pagamento}</TableCell>
-                    <TableCell className="text-right">{conversioneData(pagamento.created_at_pagamento)}</TableCell>
-                    <TableCell className="text-right">{conversioneData(pagamento.sottoscrizioni.created_at_sottoscrizione)}</TableCell>
+                    <TableCell className="font-medium">
+                      {cliente?.nome_cliente} {cliente?.cognome_cliente}
+                    </TableCell>
+                    <TableCell className="text-left font-medium">
+                      {pagamento?.note_pagamento ?? ""}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {pagamento?.anno_pagamento_pagamenti ?? ""} / {pagamento?.mese_pagamento_pagamenti ?? ""}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {conversioneData(pagamento?.created_at_pagamento)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {conversioneData(pianoAttivo?.sottoscrizioni?.data_inizio_sottoscrizione)}
+                    </TableCell>
                   </TableRow>
-                )
-              })}
+                ))
+              )}
             </TableBody>
           </Table>
         </div>
@@ -391,7 +353,7 @@ export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, o
         </SelectContent>
       </Select>
 
-      {/* Mantiene la compatibilità con eventuali handler generici basati su submit */}
+      {/* Mantiene compatibilità con handler generici basati su submit */}
       <input type="hidden" name={nome} value={value ?? ""} />
     </div>
   )

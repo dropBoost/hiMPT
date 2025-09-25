@@ -50,6 +50,3 @@ export function ButtonSection ({section, nome, click}) {
     </>
   )
 }
-
-
-

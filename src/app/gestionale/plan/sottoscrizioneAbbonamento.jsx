@@ -14,6 +14,7 @@ export default function SottoscrizioniAbbonamenti(props) {
   const dataOggi = new Date().toISOString().split("T")[0]
 
   const [clienti, setClienti] = useState([])
+  const [clienteSelezionato, setClienteSelezionato] = useState([])
   const [personalTrainer, setPersonalTrainer] = useState([])
   const [nutrizionisti, setNutrizionisti] = useState([])
   const [sottoscrizioni, setSottoscrizioni] = useState([])
@@ -98,6 +99,7 @@ export default function SottoscrizioniAbbonamenti(props) {
         .from("sottoscrizioni")
         .select(`
             uuid_sottoscrizione,
+            uuid_cliente,
             data_inizio_sottoscrizione,
             data_fine_sottoscrizione,
             created_at_sottoscrizione,
@@ -152,6 +154,11 @@ export default function SottoscrizioniAbbonamenti(props) {
     },
 ]
 
+  const sottoscrizioniFiltrateCliente = sottoscrizioni.filter(a => a.uuid_cliente == clienteSelezionato)
+
+  console.log("sele",sottoscrizioniFiltrateCliente)
+  console.log("uuidcliente sleezionato",clienteSelezionato)
+
   function handleChangeDataInizio(e) {
     const { name, value } = e.target
     if (value < dataOggi) {
@@ -161,6 +168,11 @@ export default function SottoscrizioniAbbonamenti(props) {
     // Se dataFine esiste, deve essere > dataInizio
     if (formData.dataFine && value >= formData.dataFine) {
       toast.error("La Data Inizio deve essere precedente alla Data Fine")
+      return
+    }
+
+    if (value <= formData.dataFine) {
+      toast.error("lavorare sulla verifica delle sottoscrizioni attive")
       return
     }
     setFormData(prev => ({ ...prev, [name]: value }))
@@ -180,10 +192,15 @@ export default function SottoscrizioniAbbonamenti(props) {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  function handleChange(e) {
+    const { name, value } = e.target
+    setFormData(prev => ({ ...prev, [name]: value }))
+  }
 
   function handleChangeClienteUuid(e) {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
+    setClienteSelezionato(value)
   }
 
   async function handleSubmit(e) {
@@ -247,19 +264,6 @@ export default function SottoscrizioniAbbonamenti(props) {
     async function handleSubmitPianoAbbonamento(e) {
     e.preventDefault()
 
-    // if (!formData.clienteUuid) {
-    //   console.error("Seleziona un cliente")
-    //   return
-    // }
-    // if (!formData.dataInizio) {
-    //   console.error("Imposta la Data Inizio")
-    //   return
-    // }
-    // if (formData.dataFine && formData.dataFine <= formData.dataInizio) {
-    //   console.error("La Data Fine deve essere successiva alla Data Inizio")
-    //   return
-    // }
-
     const payloadAbb = {
       uuid_sottoscrizione: pianoAbbonamento.sotUuid,
       tipologia_abbonamento: pianoAbbonamento.tipologiaAbbonamento,
@@ -303,6 +307,11 @@ export default function SottoscrizioniAbbonamenti(props) {
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
         <div>
+          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
+            REGISTRA ISCRIZIONE
+          </h4>
+        </div>
+        <div>
           <form id="formSottoscrizioni" onSubmit={handleSubmit} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
             <FormSelect
               nome="clienteUuid"
@@ -337,7 +346,7 @@ export default function SottoscrizioniAbbonamenti(props) {
               value={formData.ptUuid}
               colspan="col-span-12"
               mdcolspan="lg:col-span-6"
-              onchange={handleChangeClienteUuid}
+              onchange={handleChange}
               options={opzioniPt}
             />
             <FormSelect
@@ -346,7 +355,7 @@ export default function SottoscrizioniAbbonamenti(props) {
               value={formData.nutUuid}
               colspan="col-span-12"
               mdcolspan="lg:col-span-6"
-              onchange={handleChangeClienteUuid}
+              onchange={handleChange}
               options={opzioniNut}
             />
 
@@ -364,7 +373,7 @@ export default function SottoscrizioniAbbonamenti(props) {
         </div>
 
         <div>
-          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
+          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
             PIANO ABBONAMENTO
           </h4>
         </div>
@@ -390,7 +399,7 @@ export default function SottoscrizioniAbbonamenti(props) {
               onchange={handleChangePianoAbbonamento}
               options={opzioniPianiAbbonamento}
             />
-            <FormField nome="costoAbbonamento" label='Costo (€)' value={pianoAbbonamento.costoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='text'/>
+            <FormField nome="costoAbbonamento" label='Costo (€)' value={pianoAbbonamento.costoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='number'/>
             <FormField nome="scontoAbbonamento" label='Sconto (%)' value={pianoAbbonamento.scontoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='number'/>
             <FormTextarea nome="noteAbbonamento" label='Note' value={pianoAbbonamento.noteAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-12" onchange={handleChangePianoAbbonamento} type='text-area'/>
 

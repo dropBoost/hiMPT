@@ -214,8 +214,6 @@ export default function InserimentoUtenti(props) {
     fetchData()
   }, [statusSend])
 
-  console.log(clienti)
-
   // FINE DISPLAY ULTIMI 10 UTENTI //
 
   return (
@@ -225,27 +223,27 @@ export default function InserimentoUtenti(props) {
         <div className="">
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg"
+            className="grid grid-cols-12 grid-rows-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg"
           >
-            <FormField nome="nome" label='Nome' value={formData.nome} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
-            <FormField nome="cognome" label='Cognome' value={formData.cognome} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
-            <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCartaIdentita} type='text'/>
-            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
+            <FormField nome="nome" label='Nome' value={formData.nome} colspan="col-span-6" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
+            <FormField nome="cognome" label='Cognome' value={formData.cognome} colspan="col-span-6" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
+            <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-6" mdcolspan="lg:col-span-2" onchange={handleChangeCartaIdentita} type='text'/>
+            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-6" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
             <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeDataNascita} type='date'/>
             <FormSelect nome="provincia" label='Provincia' value={formData.provincia} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeProvincia} options={provinceSet}/>
             <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
             <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
-            <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
-            <FormField nome="email" label='Email' value={formData.email} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
-            <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
-            <FormCheckBox nome="attivo" label='Attivo' value={formData.attivo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeCheckbox} type='checkbox'/>
+            <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
+            <FormField nome="email" label='Email' value={formData.email} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
+            <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
+            <FormCheckBox nome="attivo" label='Attivo' value={formData.attivo} colspan="col-span-1" mdcolspan="md:col-span-3 lg:col-span-2" onchange={handleChangeCheckbox} type='checkbox'/>
             <div className="col-span-12 flex justify-end">
               <button type="submit" className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60">Inserisci</button>
             </div>
           </form>
         </div>
         <div className="">
-          <h4 className="text-xs font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">ULTIMI 10 CLIENTI INSERITI</h4>
+          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">ULTIMI 10 CLIENTI INSERITI</h4>
         </div>
         <div className="border border-brand rounded-xl p-5">
           <Table>
@@ -346,16 +344,9 @@ export function FormSelect({ colspan, mdcolspan, nome, label, value, onchange, o
   )
 }
 
-export function FormCheckBox({
-  colspan,
-  mdcolspan,
-  nome,
-  label,
-  value,
-  onchange,
-}) {
+export function FormCheckBox({ colspan, mdcolspan, nome, label, value, onchange }) {
   return (
-    <div className={`${colspan} ${mdcolspan} flex flex-col items-start gap-2`}>
+    <div className={`${colspan} ${mdcolspan} flex flex-col md:flex-row items-start md:items-center gap-2`}>
       <Label htmlFor={nome}>{label}</Label>
       <Checkbox
         id={nome}
@@ -365,16 +356,14 @@ export function FormCheckBox({
           onchange?.({ target: { name: nome, checked: bool } })
         }}
         className="
-          h-4 w-4 rounded border border-gray-400
+          h-4 w-4 shrink-0 rounded border border-gray-400
           data-[state=checked]:bg-brand
           data-[state=checked]:border-brand
           focus-visible:outline-none
           focus-visible:ring-2 focus-visible:ring-brand
         "
       />
-      
-
-      <input type="hidden" name={nome} value={value ? "true" : "false"} />
+      <input type="hidden" name={nome} value={value ? 'true' : 'false'} />
     </div>
   )
 }
