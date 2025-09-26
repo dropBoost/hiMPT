@@ -223,19 +223,19 @@ export default function InserimentoUtenti(props) {
         <div className="">
           <form
             onSubmit={handleSubmit}
-            className="grid grid-cols-12 grid-rows-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg"
+            className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg"
           >
             <FormField nome="nome" label='Nome' value={formData.nome} colspan="col-span-6" mdcolspan="lg:col-span-2" onchange={handleChange} type='text'/>
             <FormField nome="cognome" label='Cognome' value={formData.cognome} colspan="col-span-6" mdcolspan="lg:col-span-3" onchange={handleChange} type='text'/>
+            <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-6" mdcolspan="lg:col-span-2" onchange={handleChangeDataNascita} type='date'/>
             <FormField nome="cartaIdentita" label='Carta di Identità' value={formData.cartaIdentita} colspan="col-span-6" mdcolspan="lg:col-span-2" onchange={handleChangeCartaIdentita} type='text'/>
-            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-6" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
-            <FormField nome="dataNascita" label='Data di Nascita' value={formData.dataNascita} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeDataNascita} type='date'/>
-            <FormSelect nome="provincia" label='Provincia' value={formData.provincia} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeProvincia} options={provinceSet}/>
-            <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
-            <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
-            <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
-            <FormField nome="email" label='Email' value={formData.email} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
-            <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-6" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
+            <FormField nome="codiceFiscale" label='Codice Fiscale' value={formData.codiceFiscale} colspan="col-span-12" mdcolspan="lg:col-span-3" onchange={handleChangeCodiceFiscale} type='text'/>
+            <FormSelect nome="provincia" label='Provincia' value={formData.provincia} colspan="col-span-3" mdcolspan="lg:col-span-2" onchange={handleChangeProvincia} options={provinceSet}/>
+            <FormSelect nome="citta" label='Città' value={formData.citta} colspan="col-span-5" mdcolspan="lg:col-span-2" onchange={handleChangeCitta} options={citta}/>
+            <FormSelect nome="cap" label='Cap' value={formData.cap} colspan="col-span-4" mdcolspan="lg:col-span-2" onchange={handleChangeCap} options={cap}/>
+            <FormField nome="indirizzo" label='Indirizzo' value={formData.indirizzo} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChange} type='text'/>
+            <FormField nome="email" label='Email' value={formData.email} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='email'/>
+            <FormField nome="telefono" label='Telefono' value={formData.telefono} colspan="col-span-12" mdcolspan="lg:col-span-6" onchange={handleChangeTelEmail} type='tel'/>
             <FormCheckBox nome="attivo" label='Attivo' value={formData.attivo} colspan="col-span-1" mdcolspan="md:col-span-3 lg:col-span-2" onchange={handleChangeCheckbox} type='checkbox'/>
             <div className="col-span-12 flex justify-end">
               <button type="submit" className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60">Inserisci</button>

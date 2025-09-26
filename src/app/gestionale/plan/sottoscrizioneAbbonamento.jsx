@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import CustomScrollbar from "@/app/componenti/customeScrollbar"
+import { VscDebugRestart } from "react-icons/vsc"
 
 export default function SottoscrizioniAbbonamenti(props) {
   const onDisplay = props.onDisplay
@@ -29,7 +30,6 @@ export default function SottoscrizioniAbbonamenti(props) {
     ptUuid:"",
     nutUuid:"",
   })
-
   const [pianoAbbonamento, setPianoAbbonamento] = useState({
     tipologiaAbbonamento: "",
     costoAbbonamento: "",
@@ -156,31 +156,32 @@ export default function SottoscrizioniAbbonamenti(props) {
 
   const sottoscrizioniFiltrateCliente = sottoscrizioni.filter(a => a.uuid_cliente == clienteSelezionato)
 
-  console.log("sele",sottoscrizioniFiltrateCliente)
-  console.log("uuidcliente sleezionato",clienteSelezionato)
-
   function handleChangeDataInizio(e) {
+
     const { name, value } = e.target
+
     if (value < dataOggi) {
       toast.error("Non è possibile impostare una data passata")
       return
     }
-    // Se dataFine esiste, deve essere > dataInizio
     if (formData.dataFine && value >= formData.dataFine) {
       toast.error("La Data Inizio deve essere precedente alla Data Fine")
       return
     }
 
-    if (value <= formData.dataFine) {
-      toast.error("lavorare sulla verifica delle sottoscrizioni attive")
+    {sottoscrizioniFiltrateCliente.map((sc, index) => 
+      {if (value <=  sc.data_fine_sottoscrizione) {
+      console.log("sottoscrizione già attiva")
       return
-    }
+    }}
+    )}
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
   function handleChangeDataFine(e) {
     const { name, value } = e.target
-    // opzionale ma logico: fine deve essere > oggi? (spesso sì, ma dipende dal caso d’uso)
+
     if (value <= dataOggi) {
       toast.error("La Data Fine deve essere futura")
       return
@@ -189,6 +190,11 @@ export default function SottoscrizioniAbbonamenti(props) {
       toast.error("La Data Fine deve essere successiva alla Data Inizio")
       return
     }
+    if (!formData.dataInizio) {
+      console.log("Scegli prima la data di inizio")
+      return
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
@@ -214,8 +220,12 @@ export default function SottoscrizioniAbbonamenti(props) {
       console.error("Imposta la Data Inizio")
       return
     }
-    if (formData.dataFine && formData.dataFine <= formData.dataInizio) {
-      console.error("La Data Fine deve essere successiva alla Data Inizio")
+    if (!formData.dataFine) {
+      console.error("Imposta la Data di Fine")
+      return
+    }
+    if (!formData.personalTrainer) {
+      console.error("Scegli un Personal Trainer")
       return
     }
 
@@ -260,9 +270,22 @@ export default function SottoscrizioniAbbonamenti(props) {
     const { name, value } = e.target
     setPianoAbbonamento(prev => ({ ...prev, [name]: value }))
   }
-
-    async function handleSubmitPianoAbbonamento(e) {
+  
+  async function handleSubmitPianoAbbonamento(e) {
     e.preventDefault()
+
+    if (!pianoAbbonamento.sotUuid) {
+      console.error("Seleziona una sottoscrizione o creane una")
+      return
+    }
+    if (!pianoAbbonamento.tipologiaAbbonamento) {
+      console.error("Scegli un piano di Abbonamento")
+      return
+    }
+    if (!pianoAbbonamento.costoAbbonamento) {
+      console.error("Imposta il costo")
+      return
+    }
 
     const payloadAbb = {
       uuid_sottoscrizione: pianoAbbonamento.sotUuid,
@@ -301,7 +324,13 @@ export default function SottoscrizioniAbbonamenti(props) {
 
   }
 
+  function resetFormSottoscrizione () {
+    setFormData({ dataInizio: "", dataFine: "", clienteUuid: "", ptUuid:"", nutUuid:""})
+  }
 
+  function resetFormPianoAbbonamento () {
+    setPianoAbbonamento({ tipologiaAbbonamento: "", costoAbbonamento: "", scontoAbbonamento: "", noteAbbonamento: "", sotUuid:""})
+  }
 
   return (
     <>
@@ -359,7 +388,7 @@ export default function SottoscrizioniAbbonamenti(props) {
               options={opzioniNut}
             />
 
-            <div className="col-span-12 flex justify-end">
+            <div className="col-span-12 flex justify-end gap-2">
               <button
                 form="formSottoscrizioni"
                 type="submit"
@@ -367,6 +396,13 @@ export default function SottoscrizioniAbbonamenti(props) {
                 className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
               >
                 {loading ? "Salvataggio..." : "Inserisci"}
+              </button>
+              <button
+                type="button"
+                onClick={resetFormSottoscrizione}
+                className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
+              >
+                {<VscDebugRestart />}
               </button>
             </div>
           </form>
@@ -403,7 +439,7 @@ export default function SottoscrizioniAbbonamenti(props) {
             <FormField nome="scontoAbbonamento" label='Sconto (%)' value={pianoAbbonamento.scontoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='number'/>
             <FormTextarea nome="noteAbbonamento" label='Note' value={pianoAbbonamento.noteAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-12" onchange={handleChangePianoAbbonamento} type='text-area'/>
 
-            <div className="col-span-12 flex justify-end">
+            <div className="col-span-12 flex justify-end gap-2">
                 <button
                 form="formPianoAbbonamento"
                 type="submit"
@@ -412,6 +448,13 @@ export default function SottoscrizioniAbbonamenti(props) {
                 >
                 {loadingPianoAbbonamento ? "Salvataggio..." : "Inserisci"}
                 </button>
+                <button
+                type="button"
+                onClick={resetFormPianoAbbonamento}
+                className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
+              >
+                {<VscDebugRestart />}
+              </button>
             </div>
             </form>
         </div>

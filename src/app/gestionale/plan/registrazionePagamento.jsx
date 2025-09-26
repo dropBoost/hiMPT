@@ -148,6 +148,19 @@ export default function RegistrazionePagamenti(props) {
   async function handleSubmitPagamentoAbbonamento(e) {
     e.preventDefault()
 
+    if (!pagamentoAbbonamento.sotUuid) {
+      console.log("Scegli un piano di Abbonamento")
+      return
+    }
+    if (!pagamentoAbbonamento.mesePagamento) {
+      console.log("Scegli il mese")
+      return
+    }
+    if (!pagamentoAbbonamento.annoPagamento) {
+      console.log("Scegli l'anno")
+      return
+    }
+
     const payloadPagamento = {
       uuid_sottoscrizione: pagamentoAbbonamento.sotUuid,
       mese_pagamento_pagamenti: pagamentoAbbonamento.mesePagamento,
