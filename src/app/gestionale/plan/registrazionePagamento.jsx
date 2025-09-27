@@ -197,7 +197,7 @@ export default function RegistrazionePagamenti(props) {
     parseInt(b.mese_pagamento_pagamenti ?? "0", 10) - parseInt(a.mese_pagamento_pagamenti ?? "0", 10)
   )
   const cliente = pianoAttivo?.sottoscrizioni?.clienti
-  console.log(pagamenti)
+  
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
