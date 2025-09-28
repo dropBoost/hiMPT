@@ -16,9 +16,8 @@ import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export default function InserimentoScheda(props) {
+export default function SelettoreScheda() {
 
-  const onDisplay = props.onDisplay
   const today = new Date();
   const dataOggi = new Date().toISOString().split("T")[0]
   const dataOggiSottoscrizioni = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
@@ -222,7 +221,7 @@ export default function InserimentoScheda(props) {
 
   return (
     <>
-    <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
+    <div className={` w-full h-full flex flex-col justify-between gap-3 overflow-auto border`}>
         {/* INSERIMENTO SCHEDA */}
         <div>
             <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
@@ -324,6 +323,7 @@ export default function InserimentoScheda(props) {
             </form>
         </div>
         {/* ELENCO SCHEDE */}
+
         {datasetAllenamenti.length > 0 ? 
         <>
         <div>
@@ -375,7 +375,6 @@ export default function InserimentoScheda(props) {
         </Table>
         </div></> : 
         null }
-        {/* fine elenxo schede */}
     </div>
     </>
   )

@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import InserimentoScheda from "./inserimentoScheda";
-import ElencoUtenti from "../customer/elencoUtenti";
+import AreaWorkout from "./areaWorkout";
 
 export default function Workout() {
 
@@ -25,11 +25,11 @@ export default function Workout() {
     <div className="flex flex-col h-full w-full justify-center items-center">
       <div className="flex items-start md:justify-start justify-center w-full gap-3 py-3">
         <ButtonSection click={ClickSectionOne} nome="INSERIMENTO SCHEDA" section={onDisplaySectionOne}/>
-        <ButtonSection click={ClickSectionTwo} nome="ASSEGNA ESERCIZI" section={onDisplaySectionTwo}/>
+        <ButtonSection click={ClickSectionTwo} nome="AREA WORKOUT" section={onDisplaySectionTwo}/>
       </div>
-      <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border lg:rounded-s-2xl lg:rounded-e-sm border-t rounded-none border-brand dark:bg-neutral-800/50 overflow-auto">
+      <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border lg:rounded-s-2xl lg:rounded-e-sm border-t rounded-none border-brand dark:bg-neutral-800/50 overflow-hidden">
         <InserimentoScheda onDisplay={onDisplaySectionOne}/>
-        <ElencoUtenti onDisplay={onDisplaySectionTwo}/>
+        <AreaWorkout onDisplay={onDisplaySectionTwo}/>
       </div>
     </div>
     </>
