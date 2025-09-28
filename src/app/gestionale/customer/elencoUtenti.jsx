@@ -21,7 +21,7 @@ export default function ElencoUtenti({ onDisplay }) {
 
   // paginazione
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
+  const [pageSize, setPageSize] = useState(20)
   const [totalCount, setTotalCount] = useState(0)
 
   // calcolo indici per Supabase range (inclusivo)
@@ -112,13 +112,13 @@ export default function ElencoUtenti({ onDisplay }) {
       </div>
 
       {/* Tabella */}
-      <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5">
+      <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5 max-h-full overflow-auto">
         <Table>
-          {/* <TableCaption>
+          <TableCaption>
             {totalCount > 0
               ? `Trovati ${totalCount} clienti • Pagina ${page} di ${totalPages}`
               : "Nessun risultato"}
-          </TableCaption> */}
+          </TableCaption>
 
           <TableHeader>
             <TableRow>
@@ -131,6 +131,7 @@ export default function ElencoUtenti({ onDisplay }) {
               <TableHead className="truncate">Telefono</TableHead>
               <TableHead className="truncate">Carta d'Identità</TableHead>
               <TableHead className="border-e border-brand truncate">Data Iscrizione</TableHead>
+              <TableHead className="border-e border-brand truncate text-center">-GG</TableHead>
               <TableHead className="text-center truncate">R</TableHead>
               <TableHead className="text-center truncate">M</TableHead>
               <TableHead className="text-center truncate">E</TableHead>
@@ -159,6 +160,7 @@ export default function ElencoUtenti({ onDisplay }) {
                   <TableCell>{cliente.telefono_cliente}</TableCell>
                   <TableCell>{cliente.carta_identita_cliente}</TableCell>
                   <TableCell className="border-e border-brand">{dataFormattata}</TableCell>
+                  <TableCell className="border-e border-brand text-center">-60</TableCell>
                   <TableCell className="hover:bg-green-700 text-green-700 hover:text-neutral-200">
                     <div className=" flex flex-col justify-center items-center w-full h-full">
                     <FaFileDownload />
@@ -224,18 +226,6 @@ export default function ElencoUtenti({ onDisplay }) {
             >
               Next
             </Button>
-          </div>
-
-          {/* page size (opzionale) */}
-          <div className="flex items-center gap-2 text-sm">
-            <span>Per pagina</span>
-            <select
-              className="rounded-md border px-2 py-1 bg-background text-brand"
-              value={pageSize}
-              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1) }}
-            >
-              {[5, 10, 20, 50].map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
           </div>
         </div>
       </div>
