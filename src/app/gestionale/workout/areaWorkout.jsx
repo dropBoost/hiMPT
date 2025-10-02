@@ -1,7 +1,6 @@
 'use client'
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useRef } from "react"
 import { supabase } from "@/lib/supabaseClient"
-import { FaUserSlash } from "react-icons/fa";
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
@@ -12,20 +11,24 @@ import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { VscDebugRestart } from "react-icons/vsc"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 
 
 export default function AreaWorkout({ onDisplay }) {
 
   const [esercizi, setEsercizi] = useState([])
   const [statusSend, setStatusSend] = useState(false)
-  const today = new Date();
+  const [changeScheda, setChangeScheda] = useState(false)
+  const today = new Date().toISOString();
 
   const [open, setOpen] = React.useState(false)
-  const [sottoscrizioneScelta, setSottoscrizioneScelta] = React.useState("")
   const [datasetAllenamenti, setDatasetAllenamenti] = useState([])
   const [schedaSelezionata, setSchedaSelezionata] = useState("");
+  const [eserciziDaAssegnare, setEserciziDaAssegnare] = useState([])
+
+  //Valori esercizio
+  const [serie, setSerie] = useState({})
+  const [ripetizioni, setRipetizioni] = useState({})
+  const [peso, setPeso] = useState({})
 
   // ricerca
   const [dataSearch, setDataSearch] = useState("")        // testo digitato
@@ -77,8 +80,8 @@ export default function AreaWorkout({ onDisplay }) {
       .order("created_at_allenamento", { ascending: false })
 
       if (error) {
-      console.error(error)
-      toast.error("Errore nel caricamento delle schede")
+      console.log(error)
+      console.log("Errore nel caricamento delle schede")
       return
       }
 
@@ -183,7 +186,7 @@ export default function AreaWorkout({ onDisplay }) {
 
         if (error) {
         console.error(error)
-        toast.error("Errore nel caricamento delle schede")
+        console.error("Errore nel caricamento delle schede")
         return
         }
 
@@ -191,65 +194,96 @@ export default function AreaWorkout({ onDisplay }) {
     })()
   }, [])
 
-  async function handleSubmitSchedaAllenamento(e) {
-    e.preventDefault()
-
-    if (!sottoscrizioneScelta) {
-      console.error("Seleziona una sottoscrizione o creane una")
-      return
-    }
-    if (!schedaAllenamento.dataInizio) {
-      console.error("Scegli una data di Inizio")
-      return
-    }
-    if (!schedaAllenamento.dataFine) {
-      console.error("Scegli una data di Fine")
-      return
-    }
-
-    const payloadSchedaAllenamento = {
-      uuid_sottoscrizione: sottoscrizioneScelta,
-      data_inizio_allenamento: schedaAllenamento.dataInizio,
-      data_fine_allenamento: schedaAllenamento.dataFine,
-      note_scheda_allenamento: schedaAllenamento.noteScheda,
-    }
-
-    setLoadingSchedaAllenamento(true)
-    const { data, error } = await supabase
-      .from('schede_allenamenti')
-      .insert(payloadSchedaAllenamento)
-      .select()
-      .single()
-    setLoadingSchedaAllenamento(false)
-
-    if (error) {
-      console.error(error)
-      toast.error(`Errore salvataggio: ${error.message}`)
-      return
-    }
-
-    setSchedaAllenamento({
-        dataInizio: "",
-        dataFine: "",
-        noteScheda: "",
-    })
-
-    setStatusSend(prev => !prev)
-
-    console.log("Inserito:", data)
-    toast.success("Scheda Allenamento inserita con successo!")
-
-  }
-
   function resetFormSchedaAllenamento () {
     setSchedaSelezionata("")
   }
+
+  function aggiuntaEsercizio(uuid, scheda) {
+
+    const valoreSerie        = serie[`s-${uuid}`]
+    const valoreRipetizioni  = ripetizioni[`r-${uuid}`]
+    const valorePeso         = peso[`p-${uuid}`]
+
+    if (!valoreSerie || !valoreRipetizioni || !valorePeso || !schedaSelezionata) {
+      console.log("Compila serie/ripetizioni/peso prima di aggiungere")
+      return
+    } else (
+      setEserciziDaAssegnare(prev => ([
+        ...prev,
+        {
+          uuidEsercizio: uuid,
+          uuidSchedaAllenamento: scheda,
+          serie: valoreSerie,
+          peso: valorePeso,
+          ripetizioni: valoreRipetizioni,
+        }
+      ]))
+    )
+
+  }
+
+  function handleChangeSerie(e) {
+    const { name, value } = e.currentTarget
+    const n = value === "" ? "" : Number(value)
+    setSerie(prev => ({ ...prev, [name]: n }))
+  }
+
+  function handleChangePeso(e) {
+    const { name, value } = e.currentTarget
+    const n = value === "" ? "" : Number(value)
+    setPeso(prev => ({ ...prev, [name]: n }))
+  }
+
+  function handleChangeRipetizioni(e) {
+    const { name, value } = e.currentTarget
+    const n = value === "" ? "" : Number(value)
+    setRipetizioni(prev => ({ ...prev, [name]: n }))
+  }
+
+  useEffect(() => {
+    if (!eserciziDaAssegnare.length) return
+
+    const idsEsercizi = [...new Set(eserciziDaAssegnare.map(r => r.uuidEsercizio))]
+    const idsSchede   = [...new Set(eserciziDaAssegnare.map(r => r.uuidSchedaAllenamento))]
+
+    ;(async () => {
+      const [{ data: eserciziDett }, { data: schedeDett }] = await Promise.all([
+        supabase
+          .from('esercizi')
+          .select('uuid_esercizio, nome_esercizio, gruppo_muscolare_esercizio, codice_esercizio')
+          .in('uuid_esercizio', idsEsercizi),
+        supabase
+          .from('schede_allenamenti')
+          .select('uuid_scheda_allenamento, data_inizio_allenamento, data_fine_allenamento')
+          .in('uuid_scheda_allenamento', idsSchede),
+      ])
+
+      // crea lookup: { uuid: record }
+      const byEsercizio = Object.fromEntries((eserciziDett ?? []).map(e => [e.uuid_esercizio, e]))
+      const byScheda    = Object.fromEntries((schedeDett ?? []).map(s => [s.uuid_scheda_allenamento, s]))
+
+      setLookupEsercizi(byEsercizio)
+      setLookupSchede(byScheda)
+    })()
+  }, [eserciziDaAssegnare])
+
+  const [lookupEsercizi, setLookupEsercizi] = useState({})
+  const [lookupSchede, setLookupSchede] = useState({})
+
+  useEffect(() => {
+    setPeso({})
+    setRipetizioni({})
+    setSerie({})
+    setEserciziDaAssegnare([])
+  }, [schedaSelezionata])
+
+  console.log(eserciziDaAssegnare)
 
   return (
     <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full h-full flex flex-col justify-between gap-3 p-3`}>
       {/* INSERIMENTO SCHEDA */}
       <div className=" rounded-xl">
-        <form id="formInserimentoScheda" onSubmit={handleSubmitSchedaAllenamento} className="flex flex-row gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
+        <form id="formInserimentoScheda" className="flex flex-row gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
             <div className="flex-1 w-full">
               <Popover open={open} onOpenChange={setOpen} className="w-full">
                 <PopoverTrigger asChild>
@@ -278,6 +312,7 @@ export default function AreaWorkout({ onDisplay }) {
                             onSelect={() => {
                               setSchedaSelezionata(opt.value);
                               setOpen(false);
+                              setChangeScheda(prev => !prev)
                             }}
                           >
                             {opt.label}
@@ -307,7 +342,90 @@ export default function AreaWorkout({ onDisplay }) {
                     <DrawerDescription>This action cannot be undone.</DrawerDescription>
                   </DrawerHeader>
                     <div className="overflow-y-auto px-6 py-4 h-[calc(85vh-8rem)]">
-                      QUI VA LA SCHEDA
+                      {/* Scheda creata */}
+                      {/* <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5 max-h-full overflow-auto">
+                        <Table>
+                          <TableCaption>
+                            {totalCount > 0
+                              ? `Trovati ${totalCount} esercizi • Pagina ${page} di ${totalPages}`
+                              : "Nessun risultato"}
+                          </TableCaption>
+
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="truncate">Nome Esercizio</TableHead>
+                              <TableHead className="truncate text-center">Peso</TableHead>
+                              <TableHead className="truncate text-center">Serie</TableHead>
+                              <TableHead className="truncate text-center">Ripetizioni</TableHead>
+                            </TableRow>
+                          </TableHeader>
+
+                          <TableBody>
+                            {eserciziDaAssegnare.length ? eserciziDaAssegnare.map((esercizio, index) => {
+                              return (
+                                <TableRow key={`${esercizio.uuidEsercizio ?? index}`}>
+                                  <TableCell className="font-medium text-left truncate">nome esercizio</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{esercizio.peso}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{esercizio.serie}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{esercizio.ripetizioni}</TableCell>
+                                  <TableCell className="font-medium text-left truncate">{esercizio.uuidEsercizio}</TableCell>
+                                </TableRow>
+                              )
+                            }) : (
+                              <TableRow>
+                                <TableCell colSpan={8} className="h-24 text-center">Nessun risultato.</TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+
+                        <div className="mt-4 flex items-center justify-between gap-3">
+                          <div className="text-sm opacity-80">
+                            {totalCount > 0 && (
+                              <>
+                                Mostrati{" "}
+                                <strong>
+                                  {Math.min(totalCount, from + 1)}–{Math.min(totalCount, to + 1)}
+                                </strong>{" "}
+                                di <strong>{totalCount}</strong>
+                              </>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                              disabled={page <= 1}
+                            >
+                              Prev
+                            </Button>
+                            <span className="text-sm tabular-nums">Pag. {page} / {totalPages}</span>
+                            <Button
+                              variant="outline"
+                              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                              disabled={page >= totalPages || totalCount === 0}
+                            >
+                              Next
+                            </Button>
+                          </div>
+                        </div>
+                      </div> */}
+                      {eserciziDaAssegnare.map((r, i) => {
+                        const ex = lookupEsercizi[r.uuidEsercizio]
+                        const sc = lookupSchede[r.uuidSchedaAllenamento]
+
+                        return (
+                          <div key={i} className="py-1">
+                            {/* fallback con ?. per quando i lookup non sono ancora caricati */}
+                            <strong>{ex?.nome_esercizio ?? r.uuidEsercizio}</strong>
+                            {" — "}
+                            Serie: {r.serie} · Rip: {r.ripetizioni} · Peso: {r.peso}
+                            {" — "}
+                            Scheda: {sc ? `${sc.data_inizio_allenamento} → ${sc.data_fine_allenamento}` : r.uuidSchedaAllenamento}
+                          </div>
+                        )
+                      })}
                     </div>
                   <DrawerFooter>
                     <Button>Submit</Button>
@@ -350,19 +468,63 @@ export default function AreaWorkout({ onDisplay }) {
               <TableHead className="truncate">Nome Esercizio</TableHead>
               <TableHead className="truncate text-center">Difficoltà</TableHead>
               <TableHead className="border-e border-brand truncate text-left">Gruppo Muscolare</TableHead>
+              <TableHead className="truncate text-center">Serie</TableHead>
+              <TableHead className="truncate text-center">Ripetizioni</TableHead>
+              <TableHead className="truncate text-center">Peso</TableHead>
               <TableHead className="truncate text-center">+</TableHead>
             </TableRow>
           </TableHeader>
 
           <TableBody>
-            {esercizi.length ? esercizi.map((esercizio,cliente, index) => {
+            {esercizi.length ? esercizi.map((esercizio, index) => {
               return (
                 <TableRow key={`${esercizio.uuid_esercizio ?? index}`}>
                   <TableCell className="font-medium text-left truncate">{esercizio.codice_esercizio}</TableCell>
                   <TableCell className="font-medium text-left truncate">{esercizio.nome_esercizio}</TableCell>
                   <TableCell className="text-center truncate">{esercizio.difficolta_esercizio}</TableCell>
                   <TableCell className="border-e border-brand text-left truncate">{esercizio.gruppo_muscolare_esercizio}</TableCell>
-                  <TableCell className="hover:bg-brand dark:hover:bg-neutral-950 text-center">+</TableCell>
+                  <TableCell className="text-center truncate">
+                    <FormField
+                      nome={`s-${esercizio.uuid_esercizio}`}
+                      type="number"
+                      label="..."
+                      value={serie[`s-${esercizio.uuid_esercizio}`] ?? ""}        // <-- si svuota quando setSerie({})
+                      onchange={handleChangeSerie}
+                      min={0}
+                      step={1}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center truncate">
+                    <FormField
+                      nome={`r-${esercizio.uuid_esercizio}`}
+                      type="number"
+                      label="..."
+                      value={ripetizioni[`r-${esercizio.uuid_esercizio}`] ?? ""}
+                      onchange={handleChangeRipetizioni}
+                      min={0}
+                      step={1}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center truncate">
+                    <FormField
+                      nome={`p-${esercizio.uuid_esercizio}`}
+                      type="number"
+                      label="..."
+                      value={peso[`p-${esercizio.uuid_esercizio}`] ?? ""}
+                      onchange={handleChangePeso}
+                      min={0}
+                      step={0.5}
+                    />
+                  </TableCell>
+                  <TableCell className="hover:bg-brand dark:hover:bg-neutral-950 text-center">
+                    <Button
+                      type="button"
+                      className="w-fit bg-brand"
+                      onClick={() => aggiuntaEsercizio(esercizio.uuid_esercizio, schedaSelezionata)}
+                    >
+                      +
+                    </Button>
+                  </TableCell>
                 </TableRow>
               )
             }) : (
@@ -406,6 +568,33 @@ export default function AreaWorkout({ onDisplay }) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+export function FormField({ nome, label, onchange, type = "text", value, defaultValue, ...props }) {
+  return (
+    <div>
+      <Input
+        id={nome}
+        name={nome}
+        type={type}
+        placeholder={label}
+        value={value}                 // <-- controlled
+        defaultValue={defaultValue}   // (non usato se passi value)
+        onChange={onchange}
+        className="
+          appearance-none
+          focus:outline-none
+          focus-visible:ring-2
+          focus-visible:ring-brand
+          focus-visible:ring-offset-2
+          focus-visible:ring-offset-background
+          focus-visible:border-brand
+          text-center
+        "
+        {...props}
+      />
     </div>
   )
 }
