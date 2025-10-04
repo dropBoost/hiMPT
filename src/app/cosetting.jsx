@@ -2,7 +2,7 @@
 // import { faFacebook, faInstagram, faTiktok, faWhatsapp } from "@fortawesome/free-brands-svg-icons"
 // import { faEnvelope, faSquarePhone, faGauge, faPhotoFilm, faCalendar, faKeyboard, faFolderOpen } from '@fortawesome/free-solid-svg-icons'
 
-import { FaFacebookSquare, FaWhatsappSquare, AiFillTikTok, FaInstagramSquare, FaPhoneSquareAlt, FaEnvelope, FaUser, FaFileInvoiceDollar, FaUsers } from "react-icons/fa";
+import { FaFacebookSquare, FaWhatsappSquare, AiFillTikTok, FaInstagramSquare, FaPhoneSquareAlt, FaEnvelope, FaUser, FaFileInvoiceDollar, FaUsers, FaArchive } from "react-icons/fa";
 import { MdDashboard } from "react-icons/md";
 import { IoFitnessSharp, IoAnalyticsSharp  } from "react-icons/io5";
 import { BiSolidReport } from "react-icons/bi";
@@ -23,6 +23,7 @@ const ICONfour = <FaUsers/>
 const ICONfive = <IoFitnessSharp/>
 const ICONsix = <BiSolidReport/>
 const ICONseven = <IoAnalyticsSharp/>
+const ICONeight = <FaArchive/>
 
 // FOOTER SIGN
 export const poweredBy = "powered 💜 dropboost.it"
@@ -64,5 +65,6 @@ export const moduliGestionale = [
     {name:'workout', link:'/gestionale/workout', linkActive:'workout', icon: ICONfive, label:'workout', attivo:'true'},
     {name:'progress', link:'/gestionale/progress', linkActive:'progress', icon: ICONsix, label:'progress', attivo:'true'},
     {name:'report', link:'/gestionale/report', linkActive:'report', icon: ICONseven, label:'report', attivo:'true'},
+    {name:'archivio', link:'/gestionale/archivio', linkActive:'archivio', icon: ICONeight, label:'archivio', attivo:'true'},
   ]
 

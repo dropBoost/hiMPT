@@ -13,7 +13,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { VscDebugRestart } from "react-icons/vsc"
 
 
-export default function AreaWorkout({ onDisplay }) {
+export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEsercizi }) {
 
   const [esercizi, setEsercizi] = useState([])
   const [statusSend, setStatusSend] = useState(false)
@@ -23,7 +23,9 @@ export default function AreaWorkout({ onDisplay }) {
   const [open, setOpen] = React.useState(false)
   const [datasetAllenamenti, setDatasetAllenamenti] = useState([])
   const [schedaSelezionata, setSchedaSelezionata] = useState("");
+  const [clienteSelezionato, setClienteSelezionato] = useState({});
   const [eserciziDaAssegnare, setEserciziDaAssegnare] = useState([])
+  const isFirstRun = useRef(true)
 
   //Valori esercizio
   const [serie, setSerie] = useState({})
@@ -39,6 +41,10 @@ export default function AreaWorkout({ onDisplay }) {
   const [pageSize, setPageSize] = useState(50)
   const [totalCount, setTotalCount] = useState(0)
 
+  const [totalCountProvvisoria, setTotalCountProvvisoria] = useState(0)
+  const [pageProvvisoria, setPageProvvisoria] = useState(1)
+  const [pageSizeProvvisoria, setPageSizeProvvisoria] = useState(20)
+
   // calcolo indici per Supabase range (inclusivo)
   const { from, to } = useMemo(() => {
     const start = (page - 1) * pageSize
@@ -46,10 +52,10 @@ export default function AreaWorkout({ onDisplay }) {
   }, [page, pageSize])
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const totalPagesProvvisoria = Math.max(1, Math.ceil(totalCountProvvisoria / pageSizeProvvisoria))
 
   const escapeLike = (s) => s.replace(/([%_\\])/g, "\\$1")
 
-  
   // Carica le schede attive
   useEffect(() => {
   (async () => {
@@ -88,6 +94,50 @@ export default function AreaWorkout({ onDisplay }) {
       setDatasetAllenamenti(data ?? [])
   })()
   }, [])
+
+  // Carica il profilo del cliente selezionato
+  useEffect(() => {
+
+  if (isFirstRun.current) {
+    isFirstRun.current = false
+    return
+    }
+  if (!schedaSelezionata) return
+
+  (async () => {
+      const { data, error } = await supabase
+      .from("schede_allenamenti")
+      .select(`
+          uuid_scheda_allenamento,
+          uuid_sottoscrizione,
+          data_inizio_allenamento,
+          data_fine_allenamento,
+          created_at_allenamento,
+          note_scheda_allenamento,
+          scheda_completata_allenamento,
+          sottoscrizione:sottoscrizioni!inner (
+          uuid_cliente,
+          uuid_pt,
+          attivo_sottoscrizione,
+          data_inizio_sottoscrizione,
+          data_fine_sottoscrizione,
+          cliente:clienti (
+              nome_cliente,
+              cognome_cliente
+          )
+          )
+      `)
+      .eq("uuid_scheda_allenamento", schedaSelezionata)
+
+      if (error) {
+      console.log(error)
+      console.log("Errore nel caricamento delle schede")
+      return
+      }
+
+      setClienteSelezionato(data ?? [])
+  })()
+  }, [schedaSelezionata])
 
   // handlers ricerca
   function handleChangeSearchBar(e) {
@@ -149,13 +199,10 @@ export default function AreaWorkout({ onDisplay }) {
     fetchData();
   }, [dataSearchSubmit, page, pageSize, from, to]);
 
-  // PEZZI INSERIMENTO SCHEDA
-
   const optionsSchede = (datasetAllenamenti ?? []).map(s => ({
     value: s.uuid_scheda_allenamento, // 👈 questo è il valore che vuoi
     label: `${s?.sottoscrizione?.cliente?.cognome_cliente ?? ""} ${s?.sottoscrizione?.cliente?.nome_cliente ?? ""} • ${s.data_inizio_allenamento} → ${s.data_fine_allenamento}`,
   }));
-
 
   useEffect(() => {
     (async () => {
@@ -196,30 +243,42 @@ export default function AreaWorkout({ onDisplay }) {
 
   function resetFormSchedaAllenamento () {
     setSchedaSelezionata("")
+    setClienteSelezionato({})
+    setTotalCountProvvisoria(0)
   }
 
   function aggiuntaEsercizio(uuid, scheda) {
+    const valoreSerie       = serie[`s-${uuid}`]
+    const valoreRipetizioni = ripetizioni[`r-${uuid}`]
+    const valorePeso        = peso[`p-${uuid}`]
 
-    const valoreSerie        = serie[`s-${uuid}`]
-    const valoreRipetizioni  = ripetizioni[`r-${uuid}`]
-    const valorePeso         = peso[`p-${uuid}`]
-
-    if (!valoreSerie || !valoreRipetizioni || !valorePeso || !schedaSelezionata) {
-      console.log("Compila serie/ripetizioni/peso prima di aggiungere")
+    if (!valoreSerie || !valoreRipetizioni || !(scheda ?? schedaSelezionata)) {
+      console.log("Compila serie/ripetizioni/peso e seleziona la scheda")
       return
-    } else (
-      setEserciziDaAssegnare(prev => ([
-        ...prev,
-        {
-          uuidEsercizio: uuid,
-          uuidSchedaAllenamento: scheda,
-          serie: valoreSerie,
-          peso: valorePeso,
-          ripetizioni: valoreRipetizioni,
-        }
-      ]))
-    )
+    }
 
+    const schedaId = scheda ?? schedaSelezionata
+    const nuovo = {
+      uuid_esercizio: uuid,
+      uuid_scheda_allenamento: schedaId,
+      serie: Number(valoreSerie),
+      ripetizioni: Number(valoreRipetizioni),
+      peso: Number(valorePeso) || Number(0),
+    }
+
+    setEserciziDaAssegnare(prev => {
+      const idx = prev.findIndex(e => e.uuid_esercizio === uuid)
+      if (idx === -1) {
+        const next = [...prev, nuovo]
+        setTotalCountProvvisoria(next.length)
+        return next
+      }
+      const next = [...prev]
+      next[idx] = { ...next[idx], ...nuovo }
+      setTotalCountProvvisoria(next.length)
+      return next
+    })
+    setStatusSend(prev => !prev)
   }
 
   function handleChangeSerie(e) {
@@ -243,8 +302,8 @@ export default function AreaWorkout({ onDisplay }) {
   useEffect(() => {
     if (!eserciziDaAssegnare.length) return
 
-    const idsEsercizi = [...new Set(eserciziDaAssegnare.map(r => r.uuidEsercizio))]
-    const idsSchede   = [...new Set(eserciziDaAssegnare.map(r => r.uuidSchedaAllenamento))]
+    const idsEsercizi = [...new Set(eserciziDaAssegnare.map(r => r.uuid_esercizio))]
+    const idsSchede   = [...new Set(eserciziDaAssegnare.map(r => r.uuid_scheda_allenamento))]
 
     ;(async () => {
       const [{ data: eserciziDett }, { data: schedeDett }] = await Promise.all([
@@ -277,14 +336,78 @@ export default function AreaWorkout({ onDisplay }) {
     setEserciziDaAssegnare([])
   }, [schedaSelezionata])
 
-  console.log(eserciziDaAssegnare)
+ async function aggiungiSchedaDB(schedaId) {
+    // 1) normalizza/dedup locale (stesso uuid_esercizio: tieni il primo)
+    const puliti = Object.values(
+      eserciziDaAssegnare
+        .filter(r => r.uuid_scheda_allenamento === (schedaId ?? r.uuid_scheda_allenamento))
+        .reduce((acc, r) => {
+          const key = r.uuid_esercizio
+          if (!acc[key]) {
+            acc[key] = {
+              uuid_scheda_allenamento: schedaId ?? r.uuid_scheda_allenamento,
+              uuid_esercizio: r.uuid_esercizio,
+              serie: parseInt(r.serie, 10),
+              ripetizioni: parseInt(r.ripetizioni, 10),
+              peso: parseInt(r.peso, 10), // se int4 in DB
+            }
+          }
+          return acc
+        }, {})
+    )
+
+    if (puliti.length === 0) return []
+
+    // 2) chiedi a Supabase quali esercizi sono già presenti per quella scheda
+    const uuids = puliti.map(r => r.uuid_esercizio)
+    const { data: esistenti, error: selErr } = await supabase
+      .from("esercizi_assegnati")
+      .select("uuid_esercizio")
+      .eq("uuid_scheda_allenamento", schedaId)
+      .in("uuid_esercizio", uuids)
+
+    if (selErr) {
+      console.error("Errore verifica esistenti:", selErr)
+      return null
+    }
+
+    const setEsistenti = new Set((esistenti ?? []).map(r => r.uuid_esercizio))
+    const daInserire = puliti.filter(r => !setEsistenti.has(r.uuid_esercizio))
+
+    if (daInserire.length === 0) {
+      console.log("Nessun nuovo esercizio da inserire per questa scheda.")
+      return []
+    }
+
+    // 3) insert multiplo solo dei nuovi
+    const { data, error } = await supabase
+      .from("esercizi_assegnati")
+      .insert(daInserire)
+      .select()
+
+    if (error) {
+      console.error("Errore insert multipla:", error)
+      return null
+    }
+
+    return data
+
+    setStatusEsercizi(prev=>!prev)
+
+  }
+
+  function eliminaEsercizio(uuid) {
+    setEserciziDaAssegnare(prev =>
+      prev.filter(e => e.uuid_esercizio !== uuid)
+    )
+  }
 
   return (
     <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full h-full flex flex-col justify-between gap-3 p-3`}>
       {/* INSERIMENTO SCHEDA */}
       <div className=" rounded-xl">
-        <form id="formInserimentoScheda" className="flex flex-row gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
-            <div className="flex-1 w-full">
+        <form id="formInserimentoScheda" className="flex lg:flex-row flex-col gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
+            <div className="w-full">
               <Popover open={open} onOpenChange={setOpen} className="w-full">
                 <PopoverTrigger asChild>
                   <Button
@@ -325,7 +448,7 @@ export default function AreaWorkout({ onDisplay }) {
                 </PopoverContent>
               </Popover>
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 overflow-auto">
               <button
                   type="button"
                   onClick={resetFormSchedaAllenamento}
@@ -333,21 +456,38 @@ export default function AreaWorkout({ onDisplay }) {
               >
                   {<VscDebugRestart />}
               </button>
-              {/* PopOver */}
+              {/* PopOver scheda provvisoria */}
               <Drawer>
-                <DrawerTrigger className="border border-brand hover:bg-brand bg-brand dark:bg-neutral-900 text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60 w-fit">Apri Scheda</DrawerTrigger>
+                <DrawerTrigger className="flex flex-1 items-center justify-center border border-brand hover:bg-brand bg-brand dark:bg-neutral-900 text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 truncate transition disabled:opacity-60">... workout</DrawerTrigger>
                 <DrawerContent className="mx-auto w-full rounded-t-2xl bg-neutral-950 p-0 h-[85vh]">
-                  <DrawerHeader>
-                    <DrawerTitle>Are you absolutely sure?</DrawerTitle>
-                    <DrawerDescription>This action cannot be undone.</DrawerDescription>
+                  <DrawerHeader className="items-center justify-center">
+                    {clienteSelezionato.length > 0 ? 
+                    <>
+                    <DrawerTitle className="uppercase text-neutral-300 font-light">
+                      Scheda di: <b className="font-bold">{clienteSelezionato[0].sottoscrizione.cliente.nome_cliente} {clienteSelezionato[0].sottoscrizione.cliente.cognome_cliente}</b>
+                    </DrawerTitle>
+                    <DrawerDescription>
+                      <div className="flex flex-row gap-3">
+                        <div className="uppercase">
+                          Inizio <b>{clienteSelezionato[0].data_inizio_allenamento}</b>
+                        </div>
+                        <div className="uppercase">
+                          Fine <b>{clienteSelezionato[0].data_fine_allenamento}</b>
+                        </div>
+                      </div>
+                    </DrawerDescription>
+                    </> : <DrawerDescription>... seleziona e compila una scheda</DrawerDescription>
+                    }
                   </DrawerHeader>
+                  {eserciziDaAssegnare <= 0 ? null :
                     <div className="overflow-y-auto px-6 py-4 h-[calc(85vh-8rem)]">
                       {/* Scheda creata */}
-                      {/* <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5 max-h-full overflow-auto">
+                      <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5 max-h-full overflow-auto h-full">
+                         
                         <Table>
                           <TableCaption>
-                            {totalCount > 0
-                              ? `Trovati ${totalCount} esercizi • Pagina ${page} di ${totalPages}`
+                            {totalCountProvvisoria > 0
+                              ? `Trovati ${totalCountProvvisoria} esercizi • Pagina ${pageProvvisoria} di ${totalPagesProvvisoria}`
                               : "Nessun risultato"}
                           </TableCaption>
 
@@ -357,37 +497,39 @@ export default function AreaWorkout({ onDisplay }) {
                               <TableHead className="truncate text-center">Peso</TableHead>
                               <TableHead className="truncate text-center">Serie</TableHead>
                               <TableHead className="truncate text-center">Ripetizioni</TableHead>
+                              <TableHead className="truncate text-center">x</TableHead>
                             </TableRow>
                           </TableHeader>
 
                           <TableBody>
-                            {eserciziDaAssegnare.length ? eserciziDaAssegnare.map((esercizio, index) => {
+                            {eserciziDaAssegnare.map((r, i) => {
+
+                              const ex = lookupEsercizi[r.uuid_esercizio]
+
                               return (
-                                <TableRow key={`${esercizio.uuidEsercizio ?? index}`}>
-                                  <TableCell className="font-medium text-left truncate">nome esercizio</TableCell>
-                                  <TableCell className="font-medium text-center truncate">{esercizio.peso}</TableCell>
-                                  <TableCell className="font-medium text-center truncate">{esercizio.serie}</TableCell>
-                                  <TableCell className="font-medium text-center truncate">{esercizio.ripetizioni}</TableCell>
-                                  <TableCell className="font-medium text-left truncate">{esercizio.uuidEsercizio}</TableCell>
+                                <TableRow key={i}>
+                                  <TableCell className="font-medium text-left truncate">{ex?.nome_esercizio ?? r.uuid_esercizio}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{r.peso}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{r.serie}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">{r.ripetizioni}</TableCell>
+                                  <TableCell className="font-medium text-center truncate">
+                                    <Button onClick={() => eliminaEsercizio(r.uuid_esercizio)}>elimina</Button>
+                                  </TableCell>
                                 </TableRow>
                               )
-                            }) : (
-                              <TableRow>
-                                <TableCell colSpan={8} className="h-24 text-center">Nessun risultato.</TableCell>
-                              </TableRow>
-                            )}
+                            })}
                           </TableBody>
                         </Table>
-
+                        
                         <div className="mt-4 flex items-center justify-between gap-3">
                           <div className="text-sm opacity-80">
-                            {totalCount > 0 && (
+                            {totalCountProvvisoria > 0 && (
                               <>
                                 Mostrati{" "}
                                 <strong>
-                                  {Math.min(totalCount, from + 1)}–{Math.min(totalCount, to + 1)}
+                                  {Math.min(totalCountProvvisoria, from + 1)}–{Math.min(totalCountProvvisoria, to + 1)}
                                 </strong>{" "}
-                                di <strong>{totalCount}</strong>
+                                di <strong>{totalCountProvvisoria}</strong>
                               </>
                             )}
                           </div>
@@ -395,42 +537,28 @@ export default function AreaWorkout({ onDisplay }) {
                           <div className="flex items-center gap-2">
                             <Button
                               variant="outline"
-                              onClick={() => setPage((p) => Math.max(1, p - 1))}
+                              onClick={() => setPageProvvisoria((p) => Math.max(1, p - 1))}
                               disabled={page <= 1}
                             >
                               Prev
                             </Button>
-                            <span className="text-sm tabular-nums">Pag. {page} / {totalPages}</span>
+                            <span className="text-sm tabular-nums">Pag. {pageProvvisoria} / {totalPagesProvvisoria}</span>
                             <Button
                               variant="outline"
-                              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                              disabled={page >= totalPages || totalCount === 0}
+                              onClick={() => setPageProvvisoria((p) => Math.min(totalPages, p + 1))}
+                              disabled={pageProvvisoria >= totalPagesProvvisoria || totalCountProvvisoria === 0}
                             >
                               Next
                             </Button>
                           </div>
                         </div>
-                      </div> */}
-                      {eserciziDaAssegnare.map((r, i) => {
-                        const ex = lookupEsercizi[r.uuidEsercizio]
-                        const sc = lookupSchede[r.uuidSchedaAllenamento]
-
-                        return (
-                          <div key={i} className="py-1">
-                            {/* fallback con ?. per quando i lookup non sono ancora caricati */}
-                            <strong>{ex?.nome_esercizio ?? r.uuidEsercizio}</strong>
-                            {" — "}
-                            Serie: {r.serie} · Rip: {r.ripetizioni} · Peso: {r.peso}
-                            {" — "}
-                            Scheda: {sc ? `${sc.data_inizio_allenamento} → ${sc.data_fine_allenamento}` : r.uuidSchedaAllenamento}
-                          </div>
-                        )
-                      })}
+                      </div>
                     </div>
-                  <DrawerFooter>
-                    <Button>Submit</Button>
+                  }
+                  <DrawerFooter className="flex flex-row w-full">
+                    <Button onClick={()=>aggiungiSchedaDB(schedaSelezionata)} className="w-full">Inserisci</Button>
                     <DrawerClose>
-                      <Button variant="outline">Cancel</Button>
+                      <Button variant="outline">Chiudi</Button>
                     </DrawerClose>
                   </DrawerFooter>
                 </DrawerContent>
@@ -513,7 +641,7 @@ export default function AreaWorkout({ onDisplay }) {
                       value={peso[`p-${esercizio.uuid_esercizio}`] ?? ""}
                       onchange={handleChangePeso}
                       min={0}
-                      step={0.5}
+                      step={1}
                     />
                   </TableCell>
                   <TableCell className="hover:bg-brand dark:hover:bg-neutral-950 text-center">
