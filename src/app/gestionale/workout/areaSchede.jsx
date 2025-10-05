@@ -29,23 +29,16 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
   const [schedaSelezionata, setSchedaSelezionata] = useState("");
   const [clienteSelezionato, setClienteSelezionato] = useState({});
   const [eserciziDaAssegnare, setEserciziDaAssegnare] = useState([])
-  const [eserciziAssegnati, setEserciziAssegnati] = useState([])
-  const isFirstRun = useRef(true)
 
-  //Valori esercizio
-  const [serie, setSerie] = useState({})
-  const [ripetizioni, setRipetizioni] = useState({})
-  const [peso, setPeso] = useState({})
-
-  // ricerca
-  const [dataSearch, setDataSearch] = useState("")        // testo digitato
-  const [dataSearchSubmit, setDataSearchSubmit] = useState("") // testo applicato
 
   // paginazione
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
   const [totalCount, setTotalCount] = useState(0)
 
+  // calcoli scheda
+  const [eserciziAssegnati, setEserciziAssegnati] = useState([])
+  const [sommaDifficolta, setSommaDifficolta] = useState(0)
 
   // calcolo indici per Supabase range (inclusivo)
   const { from, to } = useMemo(() => {
@@ -57,148 +50,127 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
 
   const escapeLike = (s) => s.replace(/([%_\\])/g, "\\$1")
 
-    // Carica le schede attive
-    useEffect(() => {
-    (async () => {
-        const { data, error } = await supabase
-        .from("schede_allenamenti")
-        .select(`
-            uuid_scheda_allenamento,
-            uuid_sottoscrizione,
-            data_inizio_allenamento,
-            data_fine_allenamento,
-            created_at_allenamento,
-            note_scheda_allenamento,
-            scheda_completata_allenamento,
-            sottoscrizione:sottoscrizioni!inner (
-            uuid_cliente,
-            uuid_pt,
-            attivo_sottoscrizione,
-            data_inizio_sottoscrizione,
-            data_fine_sottoscrizione,
-            cliente:clienti (
-                nome_cliente,
-                cognome_cliente
-            )
-            )
-        `)
-        .eq("sottoscrizioni.attivo_sottoscrizione", true)
-        .eq("scheda_completata_allenamento", false)
-        .order("created_at_allenamento", { ascending: false })
+  // Carica le schede attive
+  useEffect(() => {
+  (async () => {
+      const { data, error } = await supabase
+      .from("schede_allenamenti")
+      .select(`
+          uuid_scheda_allenamento,
+          uuid_sottoscrizione,
+          data_inizio_allenamento,
+          data_fine_allenamento,
+          created_at_allenamento,
+          note_scheda_allenamento,
+          scheda_completata_allenamento,
+          sottoscrizione:sottoscrizioni!inner (
+          uuid_cliente,
+          uuid_pt,
+          attivo_sottoscrizione,
+          data_inizio_sottoscrizione,
+          data_fine_sottoscrizione,
+          cliente:clienti (
+              nome_cliente,
+              cognome_cliente
+          )
+          )
+      `)
+      .eq("sottoscrizioni.attivo_sottoscrizione", true)
+      .eq("scheda_completata_allenamento", false)
+      .order("created_at_allenamento", { ascending: false })
 
-        if (error) {
-        console.log(error)
-        console.log("Errore nel caricamento delle schede")
-        return
-        }
+      if (error) {
+      console.log(error)
+      console.log("Errore nel caricamento delle schede")
+      return
+      }
 
-        setDatasetAllenamenti(data ?? [])
-    })()
-    }, [])
+      setDatasetAllenamenti(data ?? [])
+  })()
+  }, [statusEsercizi])
 
-    // Carica gli esercizi assegnati
-    useEffect(() => {
-        ;(async () => {
-        const { data, error } = await supabase
-        .from("esercizi_assegnati")
-        .select(`
-            uuid_scheda_allenamento,
-            uuid_esercizio,
-            uuid_esercizio_assegnato,
-            serie,
-            ripetizioni,
-            peso,
-            esercizio:esercizi(
-            codice_esercizio,
-            nome_esercizio,
-            descrizione_esercizio,
-            difficolta_esercizio,
-            gruppo_muscolare_esercizio,
-            tempo_esecuzione_esercizio,
-            immagine_esercizio
-            ),
-            schedaAllenamento:schede_allenamenti(
-            uuid_sottoscrizione,
-            data_inizio_allenamento,
-            data_fine_allenamento,
-            note_scheda_allenamento,
-            created_at_allenamento,
-            scheda_completata_allenamento,
-            sottoscrizione:sottoscrizioni(
-                uuid_cliente,
-                data_inizio_sottoscrizione,
-                data_fine_sottoscrizione,
-                created_at_sottoscrizione,
-                uuid_pt,
-                uuid_nut,
-                attivo_sottoscrizione,
-                cliente:clienti(
-                nome_cliente,
-                cognome_cliente
-                )
-            )
-            )
-        `)
-        if (error) {
-        console.error("Errore nel caricamento degli esercizi:", error)
-        return
-        }
-        setEsercizi(data ?? [])
-        })()
-    }, [statusDeleted])
+  // Carica gli esercizi assegnati
+  useEffect(() => {
+      ;(async () => {
+      const { data, error } = await supabase
+      .from("esercizi_assegnati")
+      .select(`
+          uuid_scheda_allenamento,
+          uuid_esercizio,
+          uuid_esercizio_assegnato,
+          serie,
+          ripetizioni,
+          peso,
+          esercizio:esercizi(
+          codice_esercizio,
+          nome_esercizio,
+          descrizione_esercizio,
+          difficolta_esercizio,
+          gruppo_muscolare_esercizio,
+          tempo_esecuzione_esercizio,
+          immagine_esercizio
+          ),
+          schedaAllenamento:schede_allenamenti(
+          uuid_sottoscrizione,
+          data_inizio_allenamento,
+          data_fine_allenamento,
+          note_scheda_allenamento,
+          created_at_allenamento,
+          scheda_completata_allenamento,
+          sottoscrizione:sottoscrizioni(
+              uuid_cliente,
+              data_inizio_sottoscrizione,
+              data_fine_sottoscrizione,
+              created_at_sottoscrizione,
+              uuid_pt,
+              uuid_nut,
+              attivo_sottoscrizione,
+              cliente:clienti(
+              nome_cliente,
+              cognome_cliente
+              )
+          )
+          )
+      `)
+      if (error) {
+      console.error("Errore nel caricamento degli esercizi:", error)
+      return
+      }
+      setEsercizi(data ?? [])
+      })()
+  }, [statusDeleted])
 
+  async function cancellaEsercizio (u) {
 
-    async function cancellaEsercizio (u) {
+      const { error } = await supabase
+      .from("esercizi_assegnati")
+      .delete()
+      .eq("uuid_esercizio_assegnato", u)
 
-        const { error } = await supabase
-        .from("esercizi_assegnati")
-        .delete()
-        .eq("uuid_esercizio_assegnato", u)
+      if (error) {
+          console.error("Delete error:", error)
+      } else {
+          console.log("esercizio Eliminato")
+      }
 
-        if (error) {
-            console.error("Delete error:", error)
-        } else {
-            console.log("esercizio Eliminato")
-        }
+      setStatusDeleted(prev => !prev)
 
-        setStatusDeleted(prev => !prev)
-
-    }
+  }
 
   // conta quanti esercizi sono presenti per quella scheda
   useEffect(() => {
     setTotalCount((esercizi.filter(f => f.uuid_scheda_allenamento == schedaSelezionata).length))
   }, [changeScheda,statusDeleted,statusEsercizi])
 
-  //filtra gli esercizi assegnati ad una scheda
-    useEffect(() => {
-    const next = (esercizi ?? []).filter(
-        f => String(f.uuid_scheda_allenamento) === String(schedaSelezionata)
-    )
-    setEserciziAssegnati(next)
-    }, [esercizi, schedaSelezionata, changeScheda, statusDeleted, statusEsercizi])
+//filtra gli esercizi assegnati ad una scheda
+  useEffect(() => {
+  const next = (esercizi ?? []).filter(
+      f => String(f.uuid_scheda_allenamento) === String(schedaSelezionata)
+  )
+  setEserciziAssegnati(next)
+  }, [esercizi, schedaSelezionata, changeScheda, statusDeleted, statusEsercizi])
 
-  // handlers ricerca
-  function handleChangeSearchBar(e) {
-    setDataSearch(e.target.value)
-  }
-  function handleSearchClick() {
-    setDataSearchSubmit(dataSearch.trim())
-    setPage(1) // 🔑 reset pagina quando applichi filtro
-  }
-  function handleSearchKeyDown(e) {
-    if (e.key === "Enter") {
-      setDataSearchSubmit(dataSearch.trim())
-      setPage(1)
-    }
-  }
-  function handleReset() {
-    setDataSearch("")
-    setDataSearchSubmit("")
-    setPage(1)
-  }
-
-// elenco schede attive per la select
+  // elenco schede attive per la select
   const optionsSchede = (datasetAllenamenti ?? []).map(s => ({
     value: s.uuid_scheda_allenamento, // 👈 questo è il valore che vuoi
     label: `${s?.sottoscrizione?.cliente?.cognome_cliente ?? ""} ${s?.sottoscrizione?.cliente?.nome_cliente ?? ""} • ${s.data_inizio_allenamento} → ${s.data_fine_allenamento}`,
@@ -208,9 +180,41 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
     setSchedaSelezionata("")
     setClienteSelezionato({})
     setTotalCount(0)
+    setSommaDifficolta(0)
   }
 
-  console.log(statusDeleted)
+  async function eliminaScheda (u) {
+
+    if(eserciziAssegnati[0].schedaAllenamento.data_inizio_allenamento < today){
+      console.log("impossibile cancellare la scheda selezionata data già passata o in corso")
+      return
+    }
+
+    const { error } = await supabase
+    .from("schede_allenamenti")
+    .delete()
+    .eq("uuid_scheda_allenamento", u)
+
+    if (error) {
+        console.error("Delete error:", error)
+    } else {
+        console.log("scheda Eliminata")
+    }
+
+    // setStatusDeletedScheda(prev => !prev)
+
+  }
+
+  // conta quanti esercizi sono presenti per quella scheda
+  useEffect(() => {
+    setSommaDifficolta(
+      (eserciziAssegnati ?? []).reduce(
+        (tot, item) => tot + Number(item?.esercizio?.difficolta_esercizio ?? 0),
+        0
+      )
+    )
+  }, [eserciziAssegnati])
+
   return (
     <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full h-full flex flex-col justify-between gap-3 p-3`}>
       {/* INSERIMENTO SCHEDA */}
@@ -311,136 +315,141 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
             </div>
         </form>
       </div>
-
       {/* Tabella */}
-      <div className="flex flex-col flex-1 justify-between border border-brand rounded-xl p-5 max-h-full overflow-auto">
-        <Table>
-          <TableCaption>
-            {totalCount > 0
-              ? `Trovati ${totalCount} esercizi • Pagina ${page} di ${totalPages}`
-              : "Nessun risultato"}
-          </TableCaption>
+      {eserciziAssegnati.length > 0 ? (
+        <div className="flex flex-col flex-1 justify-between max-h-full overflow-auto gap-3">
+          <div className="flex flex-col flex-1 border justify-between border-brand rounded-xl p-5">
+            <Table>
 
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-left truncate text-[0.6rem] lg:text-sm w-[20px]">Cod.</TableHead>
-              <TableHead className="text-left truncate text-[0.6rem] lg:text-sm">Nome Esercizio</TableHead>
-              <TableHead className="text-left truncate text-[0.6rem] lg:text-sm"><FaArrowTrendUp /></TableHead>
-              <TableHead className="text-left border-e border-brand truncate text-[0.6rem] lg:text-sm"><IoBody className="text-green-600"/></TableHead>
-              <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">S</TableHead>
-              <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">R</TableHead>
-              <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">P</TableHead>
-              <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">C</TableHead>
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {eserciziAssegnati.length > 0 ? eserciziAssegnati.map((e, i) => {
-              return (
-                <TableRow key={`${e.uuid_esercizio_assegnato ?? i}`}>
-                  <TableCell className="text-left truncate text-[0.6rem] lg:text-sm w-[20px]">{e.esercizio.codice_esercizio}</TableCell>
-                  <TableCell className="text-left truncate text-[0.6rem] lg:text-sm">{e.esercizio.nome_esercizio}</TableCell>
-                  <TableCell className="text-left truncate text-[0.6rem] lg:text-sm">{e.esercizio.difficolta_esercizio}</TableCell>
-                  <TableCell className="text-left border-e border-brand truncate text-[0.6rem] lg:text-sm">{e.esercizio.gruppo_muscolare_esercizio}</TableCell>
-                  <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.serie}</TableCell>
-                  <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.ripetizioni}</TableCell>
-                  <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.peso}</TableCell>
-                  <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">
-                    <button
-                      type="button"
-                      variant="ghost" size="icon" aria-label="Submit"
-                      className="text-red-600"
-                      onClick={() => cancellaEsercizio(e.uuid_esercizio_assegnato)}
-                    >
-                      <FaTrashCan/>
-                    </button>
-                  </TableCell>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-left truncate text-[0.6rem] lg:text-sm w-[20px]">Cod.</TableHead>
+                  <TableHead className="text-left truncate text-[0.6rem] lg:text-sm">Nome Esercizio</TableHead>
+                  <TableHead className="text-left truncate text-[0.6rem] lg:text-sm"><FaArrowTrendUp /></TableHead>
+                  <TableHead className="text-left border-e border-brand truncate text-[0.6rem] lg:text-sm"><IoBody className="text-green-600"/></TableHead>
+                  <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">S</TableHead>
+                  <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">R</TableHead>
+                  <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">P</TableHead>
+                  <TableHead className="text-center truncate text-[0.6rem] lg:text-sm">C</TableHead>
                 </TableRow>
-              )
-            }) : (
-              <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center">Nessun risultato.</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              </TableHeader>
 
-        {/* Pagination controls */}
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div className="text-sm opacity-80">
-            {totalCount > 0 && (
-              <>
-                Mostrati{" "}
-                <strong>
-                  {Math.min(totalCount, from + 1)}–{Math.min(totalCount, to + 1)}
-                </strong>{" "}
-                di <strong>{totalCount}</strong>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-            >
-              Prev
-            </Button>
-            <span className="text-sm tabular-nums">Pag. {page} / {totalPages}</span>
-            <Button
-              variant="outline"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || totalCount === 0}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      </div>
-      <div className="flex lg:flex-row flex-col justify-between gap-3">
-        <div className="flex flex-row justify-end gap-3">
-            <div className="border border-neutral-700 rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit">
-                Esercizi Assegnati: 20
+              <TableBody>
+                {eserciziAssegnati.map((e, i) => (
+                  <TableRow key={e.uuid_esercizio_assegnato ?? i}>
+                    <TableCell className="text-left truncate text-[0.6rem] lg:text-sm w-[20px]">
+                      {e.esercizio.codice_esercizio}
+                    </TableCell>
+                    <TableCell className="text-left truncate text-[0.6rem] lg:text-sm">
+                      {e.esercizio.nome_esercizio}
+                    </TableCell>
+                    <TableCell className="text-left truncate text-[0.6rem] lg:text-sm">
+                      {e.esercizio.difficolta_esercizio}
+                    </TableCell>
+                    <TableCell className="text-left border-e border-brand truncate text-[0.6rem] lg:text-sm">
+                      {e.esercizio.gruppo_muscolare_esercizio}
+                    </TableCell>
+                    <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.serie}</TableCell>
+                    <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.ripetizioni}</TableCell>
+                    <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">{e.peso}</TableCell>
+                    <TableCell className="text-center truncate text-[0.6rem] lg:text-sm">
+                      <button
+                        type="button"
+                        aria-label="Elimina esercizio"
+                        className="text-red-600"
+                        onClick={() => cancellaEsercizio(e.uuid_esercizio_assegnato)}
+                      >
+                        <FaTrashCan/>
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+            <div className="mt-4 flex items-center justify-between gap-3">
+              <div className="text-sm opacity-80">
+                {totalCount > 0 && (
+                  <>
+                    Mostrati{" "} <strong> {Math.min(totalCount, from + 1)}–{Math.min(totalCount, to + 1)} </strong>{" "} di <strong>{totalCount}</strong>
+                  </>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                >
+                  Prev
+                </Button>
+                <span className="text-sm tabular-nums">Pag. {page} / {totalPages}</span>
+                <Button
+                  variant="outline"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages || totalCount === 0}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
-            <div className="border border-neutral-700 rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit">
-                Difficoltà Media: 20
+          </div>
+          <div className="flex lg:flex-row justify-between gap-3">
+            <div className="flex flex-row justify-end gap-3">
+              {totalCount > 0 && (
+                <div className="border border-brand bg-brand rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit">
+                  Qtà: {totalCount}
+                </div>
+              )}
+              {totalCount > 0 && (
+                <div className="border border-neutral-700 rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit">
+                  Difficoltà: {(sommaDifficolta / totalCount).toFixed(1)}
+                </div>
+              )}
             </div>
-        </div>
-        <div className="flex flex-row justify-end gap-3">
-            <div className="border border-neutral-700 rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit">
+            <div className="flex flex-row justify-end gap-3">
+              <button
+                type="button"
+                aria-label="Elimina scheda"
+                className="border text-neutral-500 hover:text-neutral-200 hover:bg-red-600 hover:border-red-600 border-neutral-700 rounded-lg px-5 py-1 max-h-full text-xs overflow-auto w-fit"
+                onClick={() => eliminaScheda(schedaSelezionata)}
+              >
                 ELIMINA SCHEDA
+              </button>
             </div>
+          </div>
         </div>
-      </div>
-      
+      ) : (
+        <p className="text-sm text-neutral-400 text-right">... seleziona una scheda allenamento</p>
+      )}
     </div>
   )
-}
+  }
 
-export function FormField({ nome, label, onchange, type = "text", value, defaultValue, ...props }) {
-  return (
-    <div>
-      <Input
-        id={nome}
-        name={nome}
-        type={type}
-        placeholder={label}
-        value={value}
-        defaultValue={defaultValue}
-        onChange={onchange}
-        className="
-          appearance-none
-          focus:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-brand
-          focus-visible:ring-offset-2
-          focus-visible:ring-offset-background
-          focus-visible:border-brand
-          text-center
-        "
-        {...props}
-      />
-    </div>
-  )
-}
+
+
+  export function FormField({ nome, label, onchange, type = "text", value, defaultValue, ...props }) {
+    return (
+      <div>
+        <Input
+          id={nome}
+          name={nome}
+          type={type}
+          placeholder={label}
+          value={value}
+          defaultValue={defaultValue}
+          onChange={onchange}
+          className="
+            appearance-none
+            focus:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-brand
+            focus-visible:ring-offset-2
+            focus-visible:ring-offset-background
+            focus-visible:border-brand
+            text-center
+          "
+          {...props}
+        />
+      </div>
+    )
+  }

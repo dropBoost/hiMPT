@@ -16,9 +16,9 @@ import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export default function InserimentoScheda(props) {
+export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusEsercizi}) {
 
-  const onDisplay = props.onDisplay
+  
   const today = new Date();
   const dataOggi = new Date().toISOString().split("T")[0]
   const dataOggiSottoscrizioni = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
@@ -29,7 +29,8 @@ export default function InserimentoScheda(props) {
   const [open, setOpen] = React.useState(false)
   const [statusSend, setStatusSend] = useState(false)
   const [sottoscrizioneScelta, setSottoscrizioneScelta] = React.useState("")
-
+  const [pianoAbbonamento, setPianoAbbonamento] = useState([])
+  const [opzioniPianoAbbonamento, setOpzioniPianoAbbonamento] = useState([])
   const [schedaAllenamento, setSchedaAllenamento] = useState({
     sotUuid: "",
     dataInizio: "",
@@ -64,6 +65,51 @@ export default function InserimentoScheda(props) {
     })()
   }, [])
 
+  // Carica i piani abbonamento
+  useEffect(() => {
+    ;(async () => {
+      const { data: pianoAbbonamento, error } = await supabase
+        .from("piano_abbonamento")
+        .select(`
+            uuid_abbonamento,
+            uuid_sottoscrizione,
+            tipologia_abbonamento,
+            costo_abbonamento,
+            sconto_abbonamento,
+            note_abbonamento,
+            created_at_abbonamento,
+            sottoscrizione:sottoscrizioni(
+              uuid_sottoscrizione,
+              uuid_cliente,
+              data_inizio_sottoscrizione,
+              data_fine_sottoscrizione,
+              created_at_sottoscrizione,
+              uuid_pt,
+              uuid_nut,
+              attivo_sottoscrizione,
+              cliente:clienti (
+                  nome_cliente,
+                  cognome_cliente,
+                  data_nascita_cliente,
+                  codice_fiscale_cliente,
+                  telefono_cliente,
+                  email_cliente
+              ))
+            `)
+        .eq("sottoscrizioni.attivo_sottoscrizione", true)
+        // .order("created_at_sottoscrizione", { ascending: false })
+
+      if (error) {
+        console.error(error)
+        console.error("Errore nel caricamento dei piano abbonamento")
+        return
+      }
+      setPianoAbbonamento(pianoAbbonamento ?? [])
+    })()
+  }, [])
+
+  
+
   const opzioniSottoscrizioni = (sottoscrizioni ?? [])
     .filter(s => (s?.data_fine_sottoscrizione ?? "") >= dataOggiSottoscrizioni && s.attivo_sottoscrizione != false)
     .map(sot => ({
@@ -72,47 +118,66 @@ export default function InserimentoScheda(props) {
     }
   ));
 
+  useEffect(() => {
+    const list = Array.isArray(pianoAbbonamento) ? pianoAbbonamento : []
+
+    const pianiAbbonamentoFiltrati = list
+      .filter(s => {
+        const fine   = s?.sottoscrizione?.data_fine_sottoscrizione ?? ""
+        const attivo = s?.sottoscrizione?.attivo_sottoscrizione === true
+        const tipoOk = String(s?.tipologia_abbonamento || "").toLowerCase() !== "nutrizione"
+        // valido se le date sono "YYYY-MM-DD"
+        return typeof fine === "string" && fine >= dataOggiSottoscrizioni && attivo && tipoOk
+      })
+      .map(sot => ({
+        value: sot?.uuid_sottoscrizione ?? "",
+        label: `${sot?.sottoscrizione?.cliente?.cognome_cliente ?? ""} ${sot?.sottoscrizione?.cliente?.nome_cliente ?? ""}`.trim()
+      }))
+
+    setOpzioniPianoAbbonamento(pianiAbbonamentoFiltrati)
+  }, [pianoAbbonamento, dataOggiSottoscrizioni])
+
   const sottoscrizioniFiltrateCliente = sottoscrizioni.filter(a => a.uuid_cliente == sottoscrizioneScelta)
 
-    useEffect(() => {
-    if (!sottoscrizioneScelta) return;
-    (async () => {
-        const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  useEffect(() => {
+  if (!sottoscrizioneScelta) return;
+  (async () => {
+      const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
-        const { data, error } = await supabase
-        .from("schede_allenamenti")
-        .select(`
-            uuid_sottoscrizione,
-            data_inizio_allenamento,
-            data_fine_allenamento,
-            created_at_allenamento,
-            note_scheda_allenamento,
-            sottoscrizione:sottoscrizioni!inner (
-            uuid_cliente,
-            uuid_pt,
-            attivo_sottoscrizione,
-            data_inizio_sottoscrizione,
-            data_fine_sottoscrizione,
-            cliente:clienti (
-                nome_cliente,
-                cognome_cliente
-            )
-            )
-        `)
-        .eq("uuid_sottoscrizione", sottoscrizioneScelta)
-        .eq("sottoscrizioni.attivo_sottoscrizione", true)
-        .gte("sottoscrizioni.data_fine_sottoscrizione", today)
-        .order("created_at_allenamento", { ascending: false })
+      const { data, error } = await supabase
+      .from("schede_allenamenti")
+      .select(`
+          uuid_sottoscrizione,
+          data_inizio_allenamento,
+          data_fine_allenamento,
+          created_at_allenamento,
+          note_scheda_allenamento,
+          sottoscrizione:sottoscrizioni!inner (
+          uuid_cliente,
+          uuid_pt,
+          attivo_sottoscrizione,
+          data_inizio_sottoscrizione,
+          data_fine_sottoscrizione,
+          cliente:clienti (
+              nome_cliente,
+              cognome_cliente
+          )
+          )
+      `)
+      .eq("uuid_sottoscrizione", sottoscrizioneScelta)
+      .eq("sottoscrizioni.attivo_sottoscrizione", true)
+      .gte("sottoscrizioni.data_fine_sottoscrizione", today)
+      .order("created_at_allenamento", { ascending: false })
 
-        if (error) {
-        console.error(error)
-        toast.error("Errore nel caricamento delle schede")
-        return
-        }
+      if (error) {
+      console.error(error)
+      toast.error("Errore nel caricamento delle schede")
+      return
+      }
 
-        setDatasetAllenamenti(data ?? [])
-    })()
-    }, [sottoscrizioneScelta, statusSend]) // dipendenza: ricarica quando cambia il cliente
+      setDatasetAllenamenti(data ?? [])
+  })()
+  }, [sottoscrizioneScelta, statusSend])
 
   function handleChangeDataInizio(e) {
 
@@ -205,6 +270,7 @@ export default function InserimentoScheda(props) {
     })
 
     setStatusSend(prev => !prev)
+    setStatusEsercizi(prev => !prev)
 
     console.log("Inserito:", data)
     toast.success("Scheda Allenamento inserita con successo!")
@@ -233,7 +299,7 @@ export default function InserimentoScheda(props) {
             <form id="formInserimentoScheda" onSubmit={handleSubmitSchedaAllenamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
                 <div className="col-span-12 lg:col-span-6">
                     <label className="block text-sm font-semibold mb-1">
-                        Sottoiscrizioni Attive
+                        Piani Abbonamento Attivi
                     </label>
                     <Popover open={open} onOpenChange={setOpen} className="w-full">
                         <PopoverTrigger asChild>
@@ -246,7 +312,7 @@ export default function InserimentoScheda(props) {
                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                             ring-offset-background
                             data-[state=open]:ring-2 data-[state=open]:ring-ring data-[state=open]:ring-offset-2">
-                            {sottoscrizioneScelta ? opzioniSottoscrizioni.find((cliente) => cliente.value === sottoscrizioneScelta)?.label  : "seleziona un cliente..."}
+                            {sottoscrizioneScelta ? opzioniPianoAbbonamento.find((cliente) => cliente.value === sottoscrizioneScelta)?.label  : "seleziona un cliente..."}
                             <ChevronsUpDown className="opacity-50" />
                         </Button>
                         </PopoverTrigger>
@@ -260,7 +326,7 @@ export default function InserimentoScheda(props) {
                             <CommandList className="my-1">
                                 <CommandEmpty>Nessun risultato</CommandEmpty>
                                 <CommandGroup>
-                                {opzioniSottoscrizioni.map((opt) => (
+                                {opzioniPianoAbbonamento.map((opt) => (
                                     <CommandItem
                                     key={opt.value}
                                     // ciò che viene usato per il filtro:

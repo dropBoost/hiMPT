@@ -31,6 +31,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
   const [serie, setSerie] = useState({})
   const [ripetizioni, setRipetizioni] = useState({})
   const [peso, setPeso] = useState({})
+  const [giorno, setGiorno] = useState({})
 
   // ricerca
   const [dataSearch, setDataSearch] = useState("")        // testo digitato
@@ -93,7 +94,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
 
       setDatasetAllenamenti(data ?? [])
   })()
-  }, [])
+  }, [statusEsercizi])
 
   // Carica il profilo del cliente selezionato
   useEffect(() => {
@@ -251,8 +252,9 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
     const valoreSerie       = serie[`s-${uuid}`]
     const valoreRipetizioni = ripetizioni[`r-${uuid}`]
     const valorePeso        = peso[`p-${uuid}`]
+    const valoreGiorno      = giorno[`g-${uuid}`]
 
-    if (!valoreSerie || !valoreRipetizioni || !(scheda ?? schedaSelezionata)) {
+    if (!valoreSerie || !valoreRipetizioni || !valoreGiorno || !(scheda ?? schedaSelezionata)) {
       console.log("Compila serie/ripetizioni/peso e seleziona la scheda")
       return
     }
@@ -263,6 +265,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
       uuid_scheda_allenamento: schedaId,
       serie: Number(valoreSerie),
       ripetizioni: Number(valoreRipetizioni),
+      giorno: Number(valoreGiorno),
       peso: Number(valorePeso) || Number(0),
     }
 
@@ -299,6 +302,12 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
     setRipetizioni(prev => ({ ...prev, [name]: n }))
   }
 
+  function handleChangeGiorno(e) {
+    const { name, value } = e.currentTarget
+    const n = value === "" ? "" : Number(value)
+    setGiorno(prev => ({ ...prev, [name]: n }))
+  }
+
   useEffect(() => {
     if (!eserciziDaAssegnare.length) return
 
@@ -333,6 +342,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
     setPeso({})
     setRipetizioni({})
     setSerie({})
+    setGiorno({})
     setEserciziDaAssegnare([])
   }, [schedaSelezionata])
 
@@ -349,6 +359,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
               uuid_esercizio: r.uuid_esercizio,
               serie: parseInt(r.serie, 10),
               ripetizioni: parseInt(r.ripetizioni, 10),
+              giorno: parseInt(r.giorno, 10),
               peso: parseInt(r.peso, 10), // se int4 in DB
             }
           }
@@ -599,6 +610,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
               <TableHead className="truncate text-center">Serie</TableHead>
               <TableHead className="truncate text-center">Ripetizioni</TableHead>
               <TableHead className="truncate text-center">Peso</TableHead>
+              <TableHead className="truncate text-center">Giorno</TableHead>
               <TableHead className="truncate text-center">+</TableHead>
             </TableRow>
           </TableHeader>
@@ -640,6 +652,17 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
                       label="..."
                       value={peso[`p-${esercizio.uuid_esercizio}`] ?? ""}
                       onchange={handleChangePeso}
+                      min={0}
+                      step={1}
+                    />
+                  </TableCell>
+                  <TableCell className="text-center truncate">
+                    <FormField
+                      nome={`g-${esercizio.uuid_esercizio}`}
+                      type="number"
+                      label="..."
+                      value={giorno[`g-${esercizio.uuid_esercizio}`] ?? ""}
+                      onchange={handleChangeGiorno}
                       min={0}
                       step={1}
                     />

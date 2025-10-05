@@ -146,18 +146,17 @@ export default function SituzioneDebitoria(props) {
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
-        <div>
-          <form className="grid grid-cols-12 gap-4 p-6 bg-white items-end dark:bg-neutral-900 rounded-2xl shadow-lg">
+        <div className="flex flex-col gap-3 p-6 bg-white items-start dark:bg-neutral-900 rounded-2xl shadow-lg w-full">
+          <form className="w-full">
             <FormSelect
               nome="sotUuid"
               label="Piano Abbonamento"
               value={pagamentoAbbonamento.sotUuid}
-              colspan="col-span-12"
-              mdcolspan="lg:col-span-11"
               onchange={handleChangeSelectSottoscrizione}
               options={opzioniSottoscrizioni}
             />
-            <div className="col-span-1 flex justify-end gap-2 h-full">
+          </form>
+            <div className="flex justify-end gap-2 h-6">
               <button
                 type="button"
                 onClick={resetFormPagamento}
@@ -166,9 +165,25 @@ export default function SituzioneDebitoria(props) {
                 {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
               </button>
             </div>
-          </form>
         </div>
-
+        <div className="flex lg:flex-row flex-col w-full border border-neutral-700 p-5 rounded-xl gap-3 overflow-auto">
+          <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">MENSILITà PAGATE</h4>
+            <span className="text-5xl">10/12</span>
+          </div>
+          <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">TOTALE FATTURATO</h4>
+            <div className="flex flex-row items-end">
+              <span className="text-5xl">2.600€</span><span className="text-xs text-neutral-500">&ensp;/ 3.200€</span>
+            </div>
+          </div>
+          <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">TOTALE SCONTO EFFETTUATO</h4>
+            <div className="flex flex-row items-end">
+              <span className="text-5xl">300€</span><span className="text-xs text-neutral-500">&ensp;/ sconto 10%</span>
+            </div>
+          </div>
+        </div>
         <div>
           <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
             DASHBOARD CLIENTE
@@ -223,9 +238,9 @@ export default function SituzioneDebitoria(props) {
   )
 }
 
-export function FormField({ colspan, mdcolspan, nome, label, value, onchange, type }) {
+export function FormField({ nome, label, value, onchange, type }) {
   return (
-    <div className={`${colspan} ${mdcolspan}`}>
+    <>
       <Label htmlFor={nome}>{label}</Label>
       <Input
         type={type}
@@ -244,7 +259,7 @@ export function FormField({ colspan, mdcolspan, nome, label, value, onchange, ty
           focus-visible:border-brand
         "
       />
-    </div>
+    </>  
   )
 }
 

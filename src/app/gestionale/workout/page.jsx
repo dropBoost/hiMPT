@@ -40,7 +40,7 @@ export default function Workout() {
         <ButtonSection click={ClickSectionThree} nome="AREA SCHEDE" section={onDisplaySectionThree}/>
       </div>
       <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border lg:rounded-s-2xl lg:rounded-e-sm border-t rounded-none border-brand dark:bg-neutral-800/50 overflow-hidden">
-        <InserimentoScheda onDisplay={onDisplaySectionOne}/>
+        <InserimentoScheda onDisplay={onDisplaySectionOne} statusEsercizi={statusEsercizi} setStatusEsercizi={setStatusEsercizi}/>
         <AreaWorkout onDisplay={onDisplaySectionTwo} statusEsercizi={statusEsercizi} setStatusEsercizi={setStatusEsercizi}/>
         <AreaSchede onDisplay={onDisplaySectionThree} statusEsercizi={statusEsercizi}/>
       </div>
