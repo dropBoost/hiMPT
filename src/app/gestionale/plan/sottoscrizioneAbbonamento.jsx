@@ -42,13 +42,11 @@ export default function SottoscrizioniAbbonamenti(props) {
     clienteUuid: valueCliente,
     ptUuid:"",
     nutUuid:"",
-  })
-  const [pianoAbbonamento, setPianoAbbonamento] = useState({
     tipologiaAbbonamento: "",
     costoAbbonamento: "",
     scontoAbbonamento: "",
     noteAbbonamento: "",
-    sotUuid:"",
+    condizionePagamento:"",
   })
 
   // Carica clienti attivi
@@ -105,32 +103,32 @@ export default function SottoscrizioniAbbonamenti(props) {
     })()
   }, [])
 
-  // Carica le sottoscrizioni
-  useEffect(() => {
-    ;(async () => {
-      const { data: sottoscrizioniData, error } = await supabase
-        .from("sottoscrizioni")
-        .select(`
-            uuid_sottoscrizione,
-            uuid_cliente,
-            data_inizio_sottoscrizione,
-            data_fine_sottoscrizione,
-            created_at_sottoscrizione,
-            cliente:clienti (
-                nome_cliente,
-                cognome_cliente
-            )`)
-        .eq("attivo_sottoscrizione", true)
-        .order("created_at_sottoscrizione", { ascending: false })
+  // // Carica le sottoscrizioni
+  // useEffect(() => {
+  //   ;(async () => {
+  //     const { data: sottoscrizioniData, error } = await supabase
+  //       .from("sottoscrizioni")
+  //       .select(`
+  //           uuid_sottoscrizione,
+  //           uuid_cliente,
+  //           data_inizio_sottoscrizione,
+  //           data_fine_sottoscrizione,
+  //           created_at_sottoscrizione,
+  //           cliente:clienti (
+  //               nome_cliente,
+  //               cognome_cliente
+  //           )`)
+  //       .eq("attivo_sottoscrizione", true)
+  //       .order("created_at_sottoscrizione", { ascending: false })
 
-      if (error) {
-        console.error(error)
-        console.error("Errore nel caricamento delle sottoscrizioni")
-        return
-      }
-      setSottoscrizioni(sottoscrizioniData ?? [])
-    })()
-  }, [loading])
+  //     if (error) {
+  //       console.error(error)
+  //       console.error("Errore nel caricamento delle sottoscrizioni")
+  //       return
+  //     }
+  //     setSottoscrizioni(sottoscrizioniData ?? [])
+  //   })()
+  // }, [loading])
 
   const opzioniClienti = clienti.map(c => ({
     value: c.uuid_cliente,
@@ -147,13 +145,13 @@ export default function SottoscrizioniAbbonamenti(props) {
     label: `${nut.cognome_nut} ${nut.nome_nut}`
   }))
 
-  const opzioniSottoscrizioni = (sottoscrizioni ?? [])
-    .filter(s => (s?.data_fine_sottoscrizione ?? "") >= dataOggiSottoscrizioni && s.attivo_sottoscrizione != false)
-    .map(sot => ({
-      value: sot.uuid_sottoscrizione,
-      label: `${sot.cliente?.cognome_cliente ?? ""} ${sot.cliente?.nome_cliente ?? ""}`.trim()
-    }
-  ));
+  // const opzioniSottoscrizioni = (sottoscrizioni ?? [])
+  //   .filter(s => (s?.data_fine_sottoscrizione ?? "") >= dataOggiSottoscrizioni && s.attivo_sottoscrizione != false)
+  //   .map(sot => ({
+  //     value: sot.uuid_sottoscrizione,
+  //     label: `${sot.cliente?.cognome_cliente ?? ""} ${sot.cliente?.nome_cliente ?? ""}`.trim()
+  //   }
+  // ));
 
   const opzioniPianiAbbonamento = [
     {
@@ -168,6 +166,26 @@ export default function SottoscrizioniAbbonamenti(props) {
     value: "ptandnut",
     label: `Personal Training + Nutrizione`
     },
+  ]
+
+  const opzioniCondizioniPagamento = [
+    {
+    value: "1",
+    label: `Mensile`
+    },
+    {
+    value: "3",
+    label: `Trimestrale`
+    },
+    {
+    value: "6",
+    label: `Semestrale`
+    },
+    {
+    value: "12",
+    label: `Annuale`
+    },
+
   ]
 
   const sottoscrizioniFiltrateCliente = sottoscrizioni.filter(a => a.uuid_cliente == valueCliente)
@@ -244,7 +262,12 @@ export default function SottoscrizioniAbbonamenti(props) {
       uuid_pt: formData.ptUuid || null,
       uuid_nut: formData.nutUuid || null,
       data_inizio_sottoscrizione: formData.dataInizio,
-      data_fine_sottoscrizione: formData.dataFine || null
+      data_fine_sottoscrizione: formData.dataFine || null,
+      tipologia_abbonamento: formData.tipologiaAbbonamento,
+      costo_abbonamento: formData.costoAbbonamento,
+      sconto_abbonamento: formData.scontoAbbonamento || null,
+      note_abbonamento: formData.noteAbbonamento || null,
+      condizione_pagamento: formData.condizionePagamento,
     }
 
     setLoading(true)
@@ -267,6 +290,11 @@ export default function SottoscrizioniAbbonamenti(props) {
       clienteUuid: "",
       ptUuid:"",
       nutUuid:"",
+      tipologiaAbbonamento: "",
+      costoAbbonamento: "",
+      scontoAbbonamento: "",
+      noteAbbonamento: "",
+      condizionePagamento:"",
     })
 
     setStatusSend(prev => !prev)
@@ -276,69 +304,8 @@ export default function SottoscrizioniAbbonamenti(props) {
 
   }
 
-  function handleChangePianoAbbonamento(e) {
-    const { name, value } = e.target
-    setPianoAbbonamento(prev => ({ ...prev, [name]: value }))
-  }
-  
-  async function handleSubmitPianoAbbonamento(e) {
-    e.preventDefault()
-
-    if (!clientiIscritti) {
-      console.error("Seleziona una sottoscrizione o creane una")
-      return
-    }
-    if (!pianoAbbonamento.tipologiaAbbonamento) {
-      console.error("Scegli un piano di Abbonamento")
-      return
-    }
-    if (!pianoAbbonamento.costoAbbonamento) {
-      console.error("Imposta il costo")
-      return
-    }
-
-    const payloadAbb = {
-      uuid_sottoscrizione: clientiIscritti,
-      tipologia_abbonamento: pianoAbbonamento.tipologiaAbbonamento,
-      costo_abbonamento: pianoAbbonamento.costoAbbonamento || null,
-      sconto_abbonamento: pianoAbbonamento.scontoAbbonamento,
-      note_abbonamento: pianoAbbonamento.noteAbbonamento || null
-    }
-
-    setLoadingPianoAbbonamento(true)
-    const { data, error } = await supabase
-      .from('piano_abbonamento')
-      .insert(payloadAbb)
-      .select()
-      .single()
-    setLoadingPianoAbbonamento(false)
-
-    if (error) {
-      console.error(error)
-      toast.error(`Errore salvataggio: ${error.message}`)
-      return
-    }
-
-    setPianoAbbonamento({
-        tipologiaAbbonamento: "",
-        costoAbbonamento: "",
-        scontoAbbonamento: "",
-        noteAbbonamento: "",}
-    )
-
-    setStatusSend(prev => !prev)
-
-    console.log("Inserito:", data)
-    toast.success("Piano Abbonamento inserito con successo!")
-
-  }
-
   function resetFormSottoscrizione () {
     setFormData({ dataInizio: "", dataFine: "", clienteUuid: "", ptUuid:"", nutUuid:""},setValueCliente(""))
-  }
-
-  function resetFormPianoAbbonamento () {
-    setPianoAbbonamento({ tipologiaAbbonamento: "", costoAbbonamento: "", scontoAbbonamento: "", noteAbbonamento: "", sotUuid:"", },setClientiIscritti(""))
   }
 
   return (
@@ -441,7 +408,27 @@ export default function SottoscrizioniAbbonamenti(props) {
               onchange={handleChange}
               options={opzioniNut}
             />
-
+            <FormSelect
+                nome="tipologiaAbbonamento"
+                label="Tipologia Abbonamento"
+                value={formData.tipologiaAbbonamento}
+                colspan="col-span-12"
+                mdcolspan="lg:col-span-4"
+                onchange={handleChange}
+                options={opzioniPianiAbbonamento}
+              />
+              <FormField nome="costoAbbonamento" label='Costo (€)' value={formData.costoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='number'/>
+              <FormField nome="scontoAbbonamento" label='Sconto (%)' value={formData.scontoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChange} type='number'/>
+              <FormSelect
+                nome="condizionePagamento"
+                label="Condizioni Pagamento"
+                value={formData.condizionePagamento}
+                colspan="col-span-12"
+                mdcolspan="lg:col-span-4"
+                onchange={handleChange}
+                options={opzioniCondizioniPagamento}
+              />
+              <FormTextarea nome="noteAbbonamento" label='Note' value={formData.noteAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-12" onchange={handleChange} type='text-area'/>
             <div className="col-span-12 flex justify-end gap-2">
               <button
                 form="formSottoscrizioni"
@@ -466,95 +453,6 @@ export default function SottoscrizioniAbbonamenti(props) {
           <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
             PIANO ABBONAMENTO
           </h4>
-        </div>
-
-        <div className="border border-brand rounded-xl p-5">
-            <form id="formPianoAbbonamento" onSubmit={handleSubmitPianoAbbonamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
-              <div className="col-span-12 lg:col-span-4">
-                <label className="block text-sm font-semibold mb-1">
-                  Sottoiscrizioni
-                </label>
-                <Popover open={openPianoAbbonamento} onOpenChange={setOpenPianoAbbonamento} className="w-full">
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={open}
-                      className="w-full justify-between
-                      outline-none focus:outline-none focus-visible:outline-none
-                      focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
-                      ring-offset-background
-                      data-[state=open]:ring-2 data-[state=open]:ring-ring data-[state=open]:ring-offset-2">
-                      {clientiIscritti ? opzioniSottoscrizioni.find((cliente) => cliente.value === clientiIscritti)?.label  : "seleziona un cliente..."}
-                      <ChevronsUpDown className="opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                    <PopoverContent
-                      align="start"
-                      sideOffset={4}
-                      className="p-0 w-[var(--radix-popover-trigger-width)]"
-                    >
-                      <Command className="p-1">
-                        <CommandInput placeholder="Cerca..." className="h-8 focus:ring-1 focus:ring-brand focus:border-brand outline-none focus:outline-none my-2" />
-                        <CommandList className="my-1">
-                          <CommandEmpty>Nessun risultato</CommandEmpty>
-                          <CommandGroup>
-                            {opzioniSottoscrizioni.map((opt) => (
-                              <CommandItem
-                                key={opt.value}
-                                // ciò che viene usato per il filtro:
-                                value={`${opt.label} ${opt.value}`}
-                                onSelect={() => {
-                                  setClientiIscritti(opt.value)
-                                  setOpenPianoAbbonamento(false)
-                                }}
-                              >
-                                {opt.label}
-                                <Check
-                                  className={cn(
-                                    "ml-auto",
-                                    opzioniSottoscrizioni === opt.value ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                </Popover>
-              </div>
-              <FormSelect
-                nome="tipologiaAbbonamento"
-                label="Tipologia Abbonamento"
-                value={pianoAbbonamento.tipologiaAbbonamento}
-                colspan="col-span-12"
-                mdcolspan="lg:col-span-4"
-                onchange={handleChangePianoAbbonamento}
-                options={opzioniPianiAbbonamento}
-              />
-              <FormField nome="costoAbbonamento" label='Costo (€)' value={pianoAbbonamento.costoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='number'/>
-              <FormField nome="scontoAbbonamento" label='Sconto (%)' value={pianoAbbonamento.scontoAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-2" onchange={handleChangePianoAbbonamento} type='number'/>
-              <FormTextarea nome="noteAbbonamento" label='Note' value={pianoAbbonamento.noteAbbonamento} colspan="col-span-12" mdcolspan="lg:col-span-12" onchange={handleChangePianoAbbonamento} type='text-area'/>
-
-              <div className="col-span-12 flex justify-end gap-2">
-                  <button
-                  form="formPianoAbbonamento"
-                  type="submit"
-                  disabled={loadingPianoAbbonamento}
-                  className="border border-brand hover:bg-brand text-white px-6 py-1 text-xs rounded-xl font-semibold hover:opacity-90 transition disabled:opacity-60"
-                  >
-                  {loadingPianoAbbonamento ? "Salvataggio..." : "Inserisci"}
-                  </button>
-                  <button
-                  type="button"
-                  onClick={resetFormPianoAbbonamento}
-                  className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
-                >
-                  {<VscDebugRestart />}
-                </button>
-              </div>
-            </form>
         </div>
       </div>
     </>

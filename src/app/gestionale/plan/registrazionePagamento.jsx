@@ -15,8 +15,7 @@ export default function RegistrazionePagamenti(props) {
   const onDisplay = props.onDisplay
 
   const [sottoscrizioni, setSottoscrizioni] = useState([])
-  const [pianoAttivo, setPianoAttivo] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [pagamentiEffettuati, setPagamentiEffettuati] = useState(null)
   const [sceltaSottoscrizione, setSceltaSottoscrizione] = useState(false)
   const [loadingPagamentoAbbonamento, setLoadingPagamentoAbbonamento] = useState(false)
 
@@ -38,9 +37,18 @@ export default function RegistrazionePagamenti(props) {
         .from("sottoscrizioni")
         .select(`
           uuid_sottoscrizione,
+          uuid_cliente,
           data_inizio_sottoscrizione,
           data_fine_sottoscrizione,
           created_at_sottoscrizione,
+          uuid_pt,
+          uuid_nut,
+          attivo_sottoscrizione,
+          tipologia_abbonamento,
+          costo_abbonamento,
+          sconto_abbonamento,
+          condizione_pagamento,
+          note_abbonamento,
           cliente:clienti (
             nome_cliente,
             cognome_cliente
@@ -56,57 +64,52 @@ export default function RegistrazionePagamenti(props) {
       }
       setSottoscrizioni(sottoscrizioniData ?? [])
     })()
-  }, [loading])
+  }, [])
 
-  // Carica il piano più recente per la sottoscrizione selezionata
+  // Carica i pagamenti della sottoscrizione scelta
   useEffect(() => {
-    const sotUuid = pagamentoAbbonamento.sotUuid
-    if (!sotUuid) {
-      setPianoAttivo(null)
-      return
-    }
-
     ;(async () => {
-      const { data, error } = await supabase
-        .from("piano_abbonamento")
+      const { data: pagamentiData, error } = await supabase
+        .from("pagamenti")
         .select(`
+          uuid_pagamento,
           uuid_sottoscrizione,
-          tipologia_abbonamento,
-          costo_abbonamento,
-          sconto_abbonamento,
-          note_abbonamento,
-          created_at_abbonamento,
-          sottoscrizioni!inner (
-            uuid_sottoscrizione,
+          mese_pagamento_pagamenti,
+          anno_pagamento_pagamenti,
+          created_at_pagamento,
+          note_pagamento,
+          sottoscrizione:sottoscrizioni(
+            uuid_cliente,
             data_inizio_sottoscrizione,
             data_fine_sottoscrizione,
+            created_at_sottoscrizione,
+            uuid_pt,
+            uuid_nut,
             attivo_sottoscrizione,
-            clienti (
-              nome_cliente,
-              cognome_cliente
-            ),
-            pagamenti (
-              mese_pagamento_pagamenti,
-              anno_pagamento_pagamenti,
-              created_at_pagamento,
-              note_pagamento
+            tipologia_abbonamento,
+            costo_abbonamento,
+            sconto_abbonamento,
+            condizione_pagamento,
+            note_abbonamento,
+            cliente:clienti (
+            nome_cliente,
+            cognome_cliente
             )
           )
         `)
-        .eq("uuid_sottoscrizione", sotUuid)
-        .order("created_at_abbonamento", { ascending: false, nullsFirst: false }) // più recente in cima
-        .limit(1)
-        .maybeSingle() // se nessun record, data = null
+        .eq("uuid_sottoscrizione", pagamentoAbbonamento.sotUuid)
+        .order("created_at_pagamento", { ascending: false })
 
       if (error) {
         console.error(error)
-        toast.error("Errore nel caricamento del piano abbonamento")
+        toast.error("Errore nel caricamento delle sottoscrizioni")
         return
       }
-
-      setPianoAttivo(data) // 👈 oggetto o null
+      setPagamentiEffettuati(pagamentiData ?? [])
     })()
-  }, [sceltaSottoscrizione, pagamentoAbbonamento.sotUuid]) // dipende anche dall'UUID selezionato
+  }, [sceltaSottoscrizione])
+
+  console.log(sottoscrizioni)
 
   const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
     const data = new Date(sot.created_at_sottoscrizione)
@@ -189,15 +192,15 @@ export default function RegistrazionePagamenti(props) {
   function resetFormPagamento () {
     setPagamentoAbbonamento({ sotUuid:"", mesePagamento:"", annoPagamento:"", notePagamento:"" })
     setSceltaSottoscrizione(prev => !prev)
+    setPagamentiEffettuati("")
   }
 
-  const pagamenti = [...(pianoAttivo?.sottoscrizioni?.pagamenti ?? [])]
+  const pagamentiOrdinati = [...(pagamentiEffettuati ?? [])]
   .sort((a, b) =>
     (b.anno_pagamento_pagamenti ?? 0) - (a.anno_pagamento_pagamenti ?? 0) ||
     parseInt(b.mese_pagamento_pagamenti ?? "0", 10) - parseInt(a.mese_pagamento_pagamenti ?? "0", 10)
   )
-  const cliente = pianoAttivo?.sottoscrizioni?.clienti
-  
+
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
@@ -205,7 +208,7 @@ export default function RegistrazionePagamenti(props) {
           <form id="formPagamentoAbbonamento" onSubmit={handleSubmitPagamentoAbbonamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
             <FormSelect
               nome="sotUuid"
-              label="Piano Abbonamento"
+              label="Sottoscrizioni Attive"
               value={pagamentoAbbonamento.sotUuid}
               colspan="col-span-12"
               mdcolspan="lg:col-span-4"
@@ -271,17 +274,17 @@ export default function RegistrazionePagamenti(props) {
             </TableHeader>
 
             <TableBody>
-              {(!pianoAttivo || pagamenti.length === 0) ? (
+              {(!pagamentiEffettuati || pagamentiEffettuati.length === 0) ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-center text-sm italic">
-                    {pianoAttivo ? "Nessun pagamento registrato" : "Seleziona un piano abbonamento"}
+                    {pagamentiEffettuati ? "Nessun pagamento registrato" : "Seleziona un piano abbonamento"}
                   </TableCell>
                 </TableRow>
               ) : (
-                pagamenti.map((pagamento, index) => (
+                pagamentiOrdinati.map((pagamento, index) => (
                   <TableRow key={index}>
                     <TableCell className="font-medium">
-                      {cliente?.nome_cliente} {cliente?.cognome_cliente}
+                      {pagamento?.sottoscrizione?.cliente?.nome_cliente} {pagamento?.sottoscrizione?.cliente?.cognome_cliente}
                     </TableCell>
                     <TableCell className="text-left font-medium">
                       {pagamento?.note_pagamento ?? ""}
@@ -293,7 +296,7 @@ export default function RegistrazionePagamenti(props) {
                       {conversioneData(pagamento?.created_at_pagamento)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {conversioneData(pianoAttivo?.sottoscrizioni?.data_inizio_sottoscrizione)}
+                      {conversioneData(pagamento?.sottoscrizione?.data_inizio_sottoscrizione)}
                     </TableCell>
                   </TableRow>
                 ))
