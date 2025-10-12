@@ -12,17 +12,20 @@ import { VscDebugRestart } from "react-icons/vsc";
 import { TiDelete } from "react-icons/ti";
 
 export default function SituzioneDebitoria(props) {
+  
   const onDisplay = props.onDisplay
 
   const [sottoscrizioni, setSottoscrizioni] = useState([])
-  const [pianoAttivo, setPianoAttivo] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [pagamentiEffettuati, setPagamentiEffettuati] = useState(null)
   const [sceltaSottoscrizione, setSceltaSottoscrizione] = useState(false)
+  const [datiSottoscrizioneScelta, setDatiSottoscrizioneScelta] = useState([])
   const [loadingPagamentoAbbonamento, setLoadingPagamentoAbbonamento] = useState(false)
 
   const [pagamentoAbbonamento, setPagamentoAbbonamento] = useState({
     sotUuid:"", mesePagamento:"", annoPagamento:"", notePagamento:"",
   })
+
+  const dataOggi = new Date().toISOString().split("T")[0]
 
   // util formattazione data
   function conversioneData(x) {
@@ -38,9 +41,18 @@ export default function SituzioneDebitoria(props) {
         .from("sottoscrizioni")
         .select(`
           uuid_sottoscrizione,
+          uuid_cliente,
           data_inizio_sottoscrizione,
           data_fine_sottoscrizione,
           created_at_sottoscrizione,
+          uuid_pt,
+          uuid_nut,
+          attivo_sottoscrizione,
+          tipologia_abbonamento,
+          costo_abbonamento,
+          sconto_abbonamento,
+          condizione_pagamento,
+          note_abbonamento,
           cliente:clienti (
             nome_cliente,
             cognome_cliente
@@ -56,60 +68,71 @@ export default function SituzioneDebitoria(props) {
       }
       setSottoscrizioni(sottoscrizioniData ?? [])
     })()
-  }, [loading])
+  }, [])
 
-  // Carica il piano più recente per la sottoscrizione selezionata
+  // Carica i pagamenti della sottoscrizione scelta (aggiustare la partenza automatica)
   useEffect(() => {
-    const sotUuid = pagamentoAbbonamento.sotUuid
-    if (!sotUuid) {
-      setPianoAttivo(null)
-      return
-    }
-
     ;(async () => {
-      const { data, error } = await supabase
-        .from("piano_abbonamento")
+      const { data: pagamentiData, error } = await supabase
+        .from("pagamenti")
         .select(`
+          uuid_pagamento,
           uuid_sottoscrizione,
-          tipologia_abbonamento,
-          costo_abbonamento,
-          sconto_abbonamento,
-          note_abbonamento,
-          created_at_abbonamento,
-          sottoscrizioni!inner (
-            uuid_sottoscrizione,
+          mese_pagamento_pagamenti,
+          anno_pagamento_pagamenti,
+          created_at_pagamento,
+          note_pagamento,
+          sottoscrizione:sottoscrizioni(
+            uuid_cliente,
             data_inizio_sottoscrizione,
             data_fine_sottoscrizione,
+            created_at_sottoscrizione,
+            uuid_pt,
+            uuid_nut,
             attivo_sottoscrizione,
-            clienti (
-              nome_cliente,
-              cognome_cliente
-            ),
-            pagamenti (
-              mese_pagamento_pagamenti,
-              anno_pagamento_pagamenti,
-              created_at_pagamento,
-              note_pagamento
+            tipologia_abbonamento,
+            costo_abbonamento,
+            sconto_abbonamento,
+            condizione_pagamento,
+            note_abbonamento,
+            cliente:clienti (
+            nome_cliente,
+            cognome_cliente
             )
           )
         `)
-        .eq("uuid_sottoscrizione", sotUuid)
-        .order("created_at_abbonamento", { ascending: false, nullsFirst: false }) // più recente in cima
-        .limit(1)
-        .maybeSingle() // se nessun record, data = null
+        .eq("uuid_sottoscrizione", pagamentoAbbonamento.sotUuid)
+        .order("created_at_pagamento", { ascending: false })
 
       if (error) {
         console.error(error)
-        toast.error("Errore nel caricamento del piano abbonamento")
+        toast.error("Errore nel caricamento delle sottoscrizioni")
         return
       }
-
-      setPianoAttivo(data) // 👈 oggetto o null
+      setPagamentiEffettuati(pagamentiData ?? [])
     })()
-  }, [sceltaSottoscrizione, pagamentoAbbonamento.sotUuid]) // dipende anche dall'UUID selezionato
+  }, [sceltaSottoscrizione])
+
+  useEffect(() => {
+    (async () => {
+      const { data, error } = await supabase
+        .from("sottoscrizioni")
+        .select("*")
+        .eq("uuid_sottoscrizione", pagamentoAbbonamento.sotUuid)
+        .maybeSingle()
+
+      if (error) {
+        console.error(error)
+        toast.error("Errore nel caricamento delle sottoscrizioni")
+        return
+      }
+      setDatiSottoscrizioneScelta(data)
+
+    })()
+  }, [sceltaSottoscrizione])
 
   const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
-    const data = new Date(sot.created_at_sottoscrizione)
+    const data = new Date(sot.data_inizio_sottoscrizione)
     const dataFormattata = data.toLocaleDateString("it-IT", { year:"numeric", month:"2-digit", day:"2-digit" })
     return {
       value: sot.uuid_sottoscrizione,
@@ -117,12 +140,7 @@ export default function SituzioneDebitoria(props) {
     }
   })
 
-  const opzioniMese = [
-    { value:"01", label:"Gennaio" }, { value:"02", label:"Febbraio" }, { value:"03", label:"Marzo" },
-    { value:"04", label:"Aprile" },  { value:"05", label:"Maggio" },   { value:"06", label:"Giugno" },
-    { value:"07", label:"Luglio" },  { value:"08", label:"Agosto" },   { value:"09", label:"Settembre" },
-    { value:"10", label:"Ottobre" }, { value:"11", label:"Novembre" }, { value:"12", label:"Dicembre" },
-  ]
+  console.log(datiSottoscrizioneScelta)
 
   function handleChangeSelectSottoscrizione(e) {
     const { name, value } = e.target
@@ -130,109 +148,278 @@ export default function SituzioneDebitoria(props) {
     setSceltaSottoscrizione(prev => !prev) // forza il reload
   }
 
-  function resetFormPagamento () {
-    setPagamentoAbbonamento({ sotUuid:"" })
-    setSceltaSottoscrizione(prev => !prev)
+  async function handleSubmitPagamentoAbbonamento(e) {
+    e.preventDefault()
+
+    if (!pagamentoAbbonamento.sotUuid) {
+      console.log("Scegli un piano di Abbonamento")
+      return
+    }
+    if (!pagamentoAbbonamento.mesePagamento) {
+      console.log("Scegli il mese")
+      return
+    }
+    if (!pagamentoAbbonamento.annoPagamento) {
+      console.log("Scegli l'anno")
+      return
+    }
+
+    const payloadPagamento = {
+      uuid_sottoscrizione: pagamentoAbbonamento.sotUuid,
+      mese_pagamento_pagamenti: pagamentoAbbonamento.mesePagamento,
+      anno_pagamento_pagamenti: pagamentoAbbonamento.annoPagamento || null,
+      note_pagamento: pagamentoAbbonamento.notePagamento,
+    }
+
+    setLoadingPagamentoAbbonamento(true)
+    const { data, error } = await supabase
+      .from('pagamenti')
+      .insert(payloadPagamento)
+      .select()
+      .single()
+    setLoadingPagamentoAbbonamento(false)
+
+    if (error) {
+      console.error(error)
+      toast.error(`Errore salvataggio: ${error.message}`)
+      return
+    }
+
+    setSceltaSottoscrizione(prev => !prev) // ricarica piano/pagamenti
+    toast.success("Pagamento inserito con successo!")
   }
 
-  const pagamenti = [...(pianoAttivo?.sottoscrizioni?.pagamenti ?? [])]
+  function resetFormPagamento () {
+    setPagamentoAbbonamento({ sotUuid:"", mesePagamento:"", annoPagamento:"", notePagamento:"" })
+    setSceltaSottoscrizione(prev => !prev)
+    setPagamentiEffettuati("")
+  }
+
+  function mesiTrascorsi(inizioStr, fineStr) {
+    const parse = (s) => {
+      const [y, m, d] = s.split("-").map(Number)
+      return new Date(Date.UTC(y, m - 1, d))
+    }
+
+    let a = parse(inizioStr)
+    let b = parse(fineStr)
+
+    if (a > b) [a, b] = [b, a] // assicura ordine cronologico
+
+    let mesi = (b.getUTCFullYear() - a.getUTCFullYear()) * 12
+            + (b.getUTCMonth() - a.getUTCMonth())
+
+    // Se il giorno di b è minore del giorno di a, non è passato un mese pieno
+    if (b.getUTCDate() < a.getUTCDate()) mesi -= 1
+
+    return mesi +1
+  }
+
+  function giorniRestanti(inizioStr, fineStr, { inclusiveEnd = false, clampZero = false } = {}) {
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    const parse = (s) => {
+      const [y, m, d] = s.split("-").map(Number);
+      return Date.UTC(y, m - 1, d); // mezzanotte UTC
+    };
+
+    const aUTC = parse(inizioStr);
+    const bUTC = parse(fineStr);
+
+    // differenza in giorni (interi)
+    let giorni = Math.floor((bUTC - aUTC) / MS_PER_DAY);
+
+    if (inclusiveEnd) giorni += 1;
+    if (clampZero && giorni < 0) return 0;
+
+    return giorni;
+  }
+
+  const pagamentiOrdinati = [...(pagamentiEffettuati ?? [])]
   .sort((a, b) =>
     (b.anno_pagamento_pagamenti ?? 0) - (a.anno_pagamento_pagamenti ?? 0) ||
     parseInt(b.mese_pagamento_pagamenti ?? "0", 10) - parseInt(a.mese_pagamento_pagamenti ?? "0", 10)
   )
 
-  const cliente = pianoAttivo?.sottoscrizioni?.clienti
-  
+  const r = pagamentiEffettuati?.[0];
+  const start   = datiSottoscrizioneScelta.data_inizio_sottoscrizione;
+  const end   = datiSottoscrizioneScelta.data_fine_sottoscrizione;
+  const costo   = Number(datiSottoscrizioneScelta.costo_abbonamento ?? 0);
+  const sconto  = Number(datiSottoscrizioneScelta.sconto_abbonamento ?? 0);
+  const cond    = Number(datiSottoscrizioneScelta.condizione_pagamento ?? 1);
+  const mesi    = start ? mesiTrascorsi(start, dataOggi) : 0;
+  const giorniFine    = end ? giorniRestanti(dataOggi, end) : 0;
+  const base    = (cond === 1 ? mesi * costo : cond * costo);
+  const tot     = base - (base * sconto) / 100;
+  const totalePagamenti = pagamentiEffettuati?.length || 0
+  const scontoEffettuato = (totalePagamenti * costo)*sconto/100
+  const totaleFatturato = (totalePagamenti * costo) - scontoEffettuato
+  const abbonamentoTerminato = end < dataOggi
+
+
+
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
-        <div className="flex flex-col gap-3 p-6 bg-white items-start dark:bg-neutral-900 rounded-2xl shadow-lg w-full">
-          <form className="w-full">
+        <div className="flex flex-col gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
+          <form id="formPagamentoAbbonamento" onSubmit={handleSubmitPagamentoAbbonamento} className="">
             <FormSelect
               nome="sotUuid"
-              label="Piano Abbonamento"
+              label="Sottoscrizioni Attive"
               value={pagamentoAbbonamento.sotUuid}
+              colspan="col-span-12"
+              mdcolspan="lg:col-span-4"
               onchange={handleChangeSelectSottoscrizione}
               options={opzioniSottoscrizioni}
             />
-          </form>
-            <div className="flex justify-end gap-2 h-6">
-              <button
-                type="button"
-                onClick={resetFormPagamento}
-                className="h-full bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60"
-              >
-                {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
-              </button>
-            </div>
+          </form> 
+          <div className="col-span-12 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={resetFormPagamento}
+              className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60 h-6"
+            >
+              {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
+            </button>
+          </div>
         </div>
+        <div className="flex flex-row gap-2">
+          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
+            PAGAMENTI EFFETTUATI
+          </h4>
+          {datiSottoscrizioneScelta.condizione_pagamento == 1 ? 
+          <h4 className="text-[0.6rem] font-bold text-dark border border-neutral-600 px-3 py-2 w-fit rounded-xl">
+            ABBONAMENTO MENSILE
+          </h4> : null
+          }
+          {datiSottoscrizioneScelta.condizione_pagamento == 3 ? 
+          <h4 className="text-[0.6rem] font-bold text-dark border border-neutral-600 px-3 py-2 w-fit rounded-xl">
+            ABBONAMENTO TRIMESTRALE
+          </h4> : null
+          }
+          {datiSottoscrizioneScelta.condizione_pagamento == 6 ? 
+          <h4 className="text-[0.6rem] font-bold text-dark border border-neutral-600 px-3 py-2 w-fit rounded-xl">
+            ABBONAMENTO SEMESTRALE
+          </h4> : null
+          }
+          {datiSottoscrizioneScelta.condizione_pagamento == 12 ? 
+          <h4 className="text-[0.6rem] font-bold text-dark border border-neutral-600 px-3 py-2 w-fit rounded-xl">
+            ABBONAMENTO ANNUALE
+          </h4> : null
+          }
+        </div>
+        
         <div className="flex lg:flex-row flex-col w-full border border-neutral-700 p-5 rounded-xl gap-3 overflow-auto">
+
+          <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">GIORNI RESTANTI</h4>
+            <div className="flex flex-row justify-start items-end">
+              {giorniFine >= 10 ? 
+              <span className="text-5xl">
+                {giorniFine}
+              </span> : 
+              <span className="text-5xl text-red-600">
+                {giorniFine >= 0 ? giorniFine : <span className="text-5xl">off</span>}
+              </span>  
+              }
+              <span className="text-xs text-neutral-500">
+                &ensp;/ giorni</span>
+            </div>
+          </div>
+
           <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
             <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">MENSILITà PAGATE</h4>
-            <span className="text-5xl">10/12</span>
+            <div className="flex flex-row justify-start items-end">
+              {totalePagamenti >= mesi ? 
+              <span className="text-5xl">
+                {totalePagamenti}
+              </span> : 
+              <span className="text-5xl text-red-600">
+                {totalePagamenti}
+              </span>  
+              }
+              <span className="text-xs text-neutral-500">&ensp;/ {cond == 1 ? mesi : cond} mesi</span>
+            </div>
           </div>
+
           <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
             <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">TOTALE FATTURATO</h4>
             <div className="flex flex-row items-end">
-              <span className="text-5xl">2.600€</span><span className="text-xs text-neutral-500">&ensp;/ 3.200€</span>
+              {totalePagamenti >= mesi ?
+              <span className="text-5xl">{totaleFatturato}€</span>
+              : <span className="text-5xl text-red-600">{totaleFatturato}€</span>}
+              <span className="text-xs text-neutral-500">
+              &ensp;/ {tot}€
+            </span>
             </div>
           </div>
+
           <div className="flex flex-col border border-neutral-700 rounded-xl p-3 shadow-lg gap-2">
             <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border uppercase border-brand px-2 py-1 w-fit rounded-md">TOTALE SCONTO EFFETTUATO</h4>
             <div className="flex flex-row items-end">
-              <span className="text-5xl">300€</span><span className="text-xs text-neutral-500">&ensp;/ sconto 10%</span>
+              <span className="text-5xl">{scontoEffettuato}€</span><span className="text-xs text-neutral-500">&ensp;/ {sconto}%</span>
             </div>
           </div>
-        </div>
-        <div>
-          <h4 className="text-[0.6rem] font-bold text-dark dark:text-brand border border-brand px-3 py-2 w-fit rounded-xl">
-            DASHBOARD CLIENTE
-          </h4>
-        </div>
 
-        <div className="border border-brand rounded-xl p-5">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome e Cognome</TableHead>
-                <TableHead className="text-left">Note</TableHead>
-                <TableHead className="text-right">Mensilità Pagata</TableHead>
-                <TableHead className="text-right">Data Pagamento</TableHead>
-                <TableHead className="text-right">Inizio Sottoscrizione</TableHead>
-              </TableRow>
-            </TableHeader>
-
-            <TableBody>
-              {(!pianoAttivo || pagamenti.length === 0) ? (
+          {tot > totaleFatturato && cond == 1 ?
+          <div className="flex flex-col border border-red-600 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark border uppercase border-red-600 px-2 py-1 w-fit rounded-md">IMPORTO RESTANTE</h4>
+            <div className="flex flex-row items-end">
+              <span className="text-5xl text-red-600">{tot - totaleFatturato}€</span>
+            </div>
+          </div>  : null }
+          {tot > totaleFatturato && cond !== 1 && giorniFine <= 30 ? 
+          <div className="flex flex-col border border-red-600 rounded-xl p-3 shadow-lg gap-2">
+            <h4 className="text-[0.6rem] font-bold text-dark border uppercase border-red-600 px-2 py-1 w-fit rounded-md">IMPORTO RESTANTE</h4>
+            <div className="flex flex-row items-end">
+              <span className="text-5xl text-red-600">{tot - totaleFatturato}€</span>
+            </div>
+          </div> : null }
+          </div> 
+          {totalePagamenti > 0 ?
+          <div className="border border-brand rounded-xl p-5">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center text-sm italic">
-                    {pianoAttivo ? "Nessun pagamento registrato" : "Seleziona un piano abbonamento"}
-                  </TableCell>
+                  <TableHead>Nome e Cognome</TableHead>
+                  <TableHead className="text-left">Note</TableHead>
+                  <TableHead className="text-right">Mensilità Pagata</TableHead>
+                  <TableHead className="text-right">Data Pagamento</TableHead>
+                  <TableHead className="text-right">Inizio Sottoscrizione</TableHead>
                 </TableRow>
-              ) : (
-                pagamenti.map((pagamento, index) => (
-                  <TableRow key={index}>
-                    <TableCell className="font-medium">
-                      {cliente?.nome_cliente} {cliente?.cognome_cliente}
-                    </TableCell>
-                    <TableCell className="text-left font-medium">
-                      {pagamento?.note_pagamento ?? ""}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {pagamento?.anno_pagamento_pagamenti ?? ""} / {pagamento?.mese_pagamento_pagamenti ?? ""}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {conversioneData(pagamento?.created_at_pagamento)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {conversioneData(pianoAttivo?.sottoscrizioni?.data_inizio_sottoscrizione)}
+              </TableHeader>
+
+              <TableBody>
+                {(!pagamentiEffettuati || pagamentiEffettuati.length === 0) ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center text-sm italic">
+                      {pagamentiEffettuati ? "Nessun pagamento registrato" : "Seleziona un piano abbonamento"}
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                ) : (
+                  pagamentiOrdinati.map((pagamento, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        {pagamento?.sottoscrizione?.cliente?.nome_cliente} {pagamento?.sottoscrizione?.cliente?.cognome_cliente}
+                      </TableCell>
+                      <TableCell className="text-left font-medium">
+                        {pagamento?.note_pagamento ?? ""}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {pagamento?.anno_pagamento_pagamenti ?? ""} / {pagamento?.mese_pagamento_pagamenti ?? ""}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {conversioneData(pagamento?.created_at_pagamento)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {conversioneData(pagamento?.sottoscrizione?.data_inizio_sottoscrizione)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div> : null }
       </div>
     </>
   )

@@ -109,8 +109,6 @@ export default function RegistrazionePagamenti(props) {
     })()
   }, [sceltaSottoscrizione])
 
-  console.log(sottoscrizioni)
-
   const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
     const data = new Date(sot.created_at_sottoscrizione)
     const dataFormattata = data.toLocaleDateString("it-IT", { year:"numeric", month:"2-digit", day:"2-digit" })
