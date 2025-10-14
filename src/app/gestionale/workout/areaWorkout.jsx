@@ -71,15 +71,15 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
           note_scheda_allenamento,
           scheda_completata_allenamento,
           sottoscrizione:sottoscrizioni!inner (
-          uuid_cliente,
-          uuid_pt,
-          attivo_sottoscrizione,
-          data_inizio_sottoscrizione,
-          data_fine_sottoscrizione,
-          cliente:clienti (
-              nome_cliente,
-              cognome_cliente
-          )
+            uuid_cliente,
+            uuid_pt,
+            attivo_sottoscrizione,
+            data_inizio_sottoscrizione,
+            data_fine_sottoscrizione,
+            cliente:clienti (
+                nome_cliente,
+                cognome_cliente
+            )
           )
       `)
       .eq("sottoscrizioni.attivo_sottoscrizione", true)
@@ -144,16 +144,19 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
   function handleChangeSearchBar(e) {
     setDataSearch(e.target.value)
   }
+
   function handleSearchClick() {
     setDataSearchSubmit(dataSearch.trim())
     setPage(1) // 🔑 reset pagina quando applichi filtro
   }
+
   function handleSearchKeyDown(e) {
     if (e.key === "Enter") {
       setDataSearchSubmit(dataSearch.trim())
       setPage(1)
     }
   }
+
   function handleReset() {
     setDataSearch("")
     setDataSearchSubmit("")
@@ -332,6 +335,7 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
 
       setLookupEsercizi(byEsercizio)
       setLookupSchede(byScheda)
+      setStatusEsercizi(prev => !prev)
     })()
   }, [eserciziDaAssegnare])
 
@@ -396,15 +400,14 @@ export default function AreaWorkout({ onDisplay, statusEsercizi, setStatusEserci
       .insert(daInserire)
       .select()
 
+    setStatusEsercizi(prev => !prev)
+
     if (error) {
       console.error("Errore insert multipla:", error)
       return null
     }
 
     return data
-
-    setStatusEsercizi(prev=>!prev)
-
   }
 
   function eliminaEsercizio(uuid) {

@@ -16,7 +16,7 @@ import { IoBody } from "react-icons/io5";
 
 
 
-export default function AreaSchede({ onDisplay, statusEsercizi }) {
+export default function AreaSchede({onDisplay, statusEsercizi, setStatusEsercizi}) {
 
   const [esercizi, setEsercizi] = useState([])
   const [statusDeleted, setStatusDeleted] = useState(false)
@@ -138,7 +138,7 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
       }
       setEsercizi(data ?? [])
       })()
-  }, [statusDeleted])
+  }, [statusDeleted, statusEsercizi])
 
   async function cancellaEsercizio (u) {
 
@@ -162,12 +162,13 @@ export default function AreaSchede({ onDisplay, statusEsercizi }) {
     setTotalCount((esercizi.filter(f => f.uuid_scheda_allenamento == schedaSelezionata).length))
   }, [changeScheda,statusDeleted,statusEsercizi])
 
-//filtra gli esercizi assegnati ad una scheda
+  //filtra gli esercizi assegnati ad una scheda
   useEffect(() => {
   const next = (esercizi ?? []).filter(
       f => String(f.uuid_scheda_allenamento) === String(schedaSelezionata)
   )
   setEserciziAssegnati(next)
+  
   }, [esercizi, schedaSelezionata, changeScheda, statusDeleted, statusEsercizi])
 
   // elenco schede attive per la select

@@ -10,6 +10,8 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Button } from "@/components/ui/button"
 import { VscDebugRestart } from "react-icons/vsc";
 import { TiDelete } from "react-icons/ti";
+import { RiAlarmWarningFill } from "react-icons/ri";
+
 
 export default function SituzioneDebitoria(props) {
   
@@ -26,6 +28,21 @@ export default function SituzioneDebitoria(props) {
   })
 
   const dataOggi = new Date().toISOString().split("T")[0]
+
+  const r = pagamentiEffettuati?.[0];
+  const start   = datiSottoscrizioneScelta.data_inizio_sottoscrizione;
+  const end   = datiSottoscrizioneScelta.data_fine_sottoscrizione;
+  const costo   = Number(datiSottoscrizioneScelta.costo_abbonamento ?? 0);
+  const sconto  = Number(datiSottoscrizioneScelta.sconto_abbonamento ?? 0);
+  const cond    = Number(datiSottoscrizioneScelta.condizione_pagamento ?? 1);
+  const mesi    = start ? mesiTrascorsi(start, dataOggi) : 0;
+  const giorniFine    = end ? giorniRestanti(dataOggi, end) : 0;
+  const base    = (cond === 1 ? mesi * costo : cond * costo);
+  const tot     = base - (base * sconto) / 100;
+  const totalePagamenti = pagamentiEffettuati?.length || 0
+  const scontoEffettuato = (totalePagamenti * costo)*sconto/100
+  const totaleFatturato = (totalePagamenti * costo) - scontoEffettuato
+  const abbonamentoTerminato = end < dataOggi
 
   // util formattazione data
   function conversioneData(x) {
@@ -59,7 +76,7 @@ export default function SituzioneDebitoria(props) {
           )
         `)
         .eq("attivo_sottoscrizione", true)
-        .order("created_at_sottoscrizione", { ascending: false })
+        .order("cognome_cliente", { ascending: true, foreignTable: "clienti" })
 
       if (error) {
         console.error(error)
@@ -132,61 +149,16 @@ export default function SituzioneDebitoria(props) {
   }, [sceltaSottoscrizione])
 
   const opzioniSottoscrizioni = sottoscrizioni.map(sot => {
-    const data = new Date(sot.data_inizio_sottoscrizione)
-    const dataFormattata = data.toLocaleDateString("it-IT", { year:"numeric", month:"2-digit", day:"2-digit" })
     return {
       value: sot.uuid_sottoscrizione,
-      label: `${sot.cliente.cognome_cliente} ${sot.cliente.nome_cliente} - ${dataFormattata}`
+      label: `${sot.cliente.cognome_cliente} ${sot.cliente.nome_cliente}`
     }
   })
-
-  console.log(datiSottoscrizioneScelta)
 
   function handleChangeSelectSottoscrizione(e) {
     const { name, value } = e.target
     setPagamentoAbbonamento(prev => ({ ...prev, [name]: value }))
     setSceltaSottoscrizione(prev => !prev) // forza il reload
-  }
-
-  async function handleSubmitPagamentoAbbonamento(e) {
-    e.preventDefault()
-
-    if (!pagamentoAbbonamento.sotUuid) {
-      console.log("Scegli un piano di Abbonamento")
-      return
-    }
-    if (!pagamentoAbbonamento.mesePagamento) {
-      console.log("Scegli il mese")
-      return
-    }
-    if (!pagamentoAbbonamento.annoPagamento) {
-      console.log("Scegli l'anno")
-      return
-    }
-
-    const payloadPagamento = {
-      uuid_sottoscrizione: pagamentoAbbonamento.sotUuid,
-      mese_pagamento_pagamenti: pagamentoAbbonamento.mesePagamento,
-      anno_pagamento_pagamenti: pagamentoAbbonamento.annoPagamento || null,
-      note_pagamento: pagamentoAbbonamento.notePagamento,
-    }
-
-    setLoadingPagamentoAbbonamento(true)
-    const { data, error } = await supabase
-      .from('pagamenti')
-      .insert(payloadPagamento)
-      .select()
-      .single()
-    setLoadingPagamentoAbbonamento(false)
-
-    if (error) {
-      console.error(error)
-      toast.error(`Errore salvataggio: ${error.message}`)
-      return
-    }
-
-    setSceltaSottoscrizione(prev => !prev) // ricarica piano/pagamenti
-    toast.success("Pagamento inserito con successo!")
   }
 
   function resetFormPagamento () {
@@ -241,28 +213,11 @@ export default function SituzioneDebitoria(props) {
     parseInt(b.mese_pagamento_pagamenti ?? "0", 10) - parseInt(a.mese_pagamento_pagamenti ?? "0", 10)
   )
 
-  const r = pagamentiEffettuati?.[0];
-  const start   = datiSottoscrizioneScelta.data_inizio_sottoscrizione;
-  const end   = datiSottoscrizioneScelta.data_fine_sottoscrizione;
-  const costo   = Number(datiSottoscrizioneScelta.costo_abbonamento ?? 0);
-  const sconto  = Number(datiSottoscrizioneScelta.sconto_abbonamento ?? 0);
-  const cond    = Number(datiSottoscrizioneScelta.condizione_pagamento ?? 1);
-  const mesi    = start ? mesiTrascorsi(start, dataOggi) : 0;
-  const giorniFine    = end ? giorniRestanti(dataOggi, end) : 0;
-  const base    = (cond === 1 ? mesi * costo : cond * costo);
-  const tot     = base - (base * sconto) / 100;
-  const totalePagamenti = pagamentiEffettuati?.length || 0
-  const scontoEffettuato = (totalePagamenti * costo)*sconto/100
-  const totaleFatturato = (totalePagamenti * costo) - scontoEffettuato
-  const abbonamentoTerminato = end < dataOggi
-
-
-
   return (
     <>
       <div className={`${onDisplay === 'on' ? '' : 'hidden'} w-full flex flex-col gap-3 p-3`}>
         <div className="flex flex-col gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
-          <form id="formPagamentoAbbonamento" onSubmit={handleSubmitPagamentoAbbonamento} className="">
+          <form id="formPagamentoAbbonamento" className="">
             <FormSelect
               nome="sotUuid"
               label="Sottoscrizioni Attive"
@@ -273,14 +228,29 @@ export default function SituzioneDebitoria(props) {
               options={opzioniSottoscrizioni}
             />
           </form> 
-          <div className="col-span-12 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={resetFormPagamento}
-              className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60 h-6"
-            >
-              {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
-            </button>
+          <div className="flex flex-row justify-between gap-2 min-h-8">
+            <div className="flex flex-row gap-2">
+              {pagamentoAbbonamento.sotUuid && 
+              <>
+              <span className="text-[0.6rem] text-dark border border-neutral-700 px-3 py-2 w-fit rounded-xl">
+                INIZIO:<span className="font-extrabold text-green-700"> {conversioneData(datiSottoscrizioneScelta.data_inizio_sottoscrizione)}</span> 
+              </span>
+              <span className="text-[0.6rem] text-dark border border-neutral-700 px-3 py-2 w-fit rounded-xl">
+                FINE: <span className="font-extrabold text-brand"> {conversioneData(datiSottoscrizioneScelta.data_fine_sottoscrizione)}</span>
+              </span>
+              </>
+              }
+            </div>
+            <div className="flex flex-row items-center justify-center">
+              <button
+                type="button"
+                onClick={resetFormPagamento}
+                className="bg-brand hover:bg-brand/70 text-white px-3 rounded-xl text-xs font-semibold hover:opacity-90 transition disabled:opacity-60 h-full"
+              >
+                
+                {loadingPagamentoAbbonamento ? <TiDelete /> : <VscDebugRestart />}
+              </button>
+            </div>
           </div>
         </div>
         <div className="flex flex-row gap-2">
@@ -319,11 +289,11 @@ export default function SituzioneDebitoria(props) {
                 {giorniFine}
               </span> : 
               <span className="text-5xl text-red-600">
-                {giorniFine >= 0 ? giorniFine : <span className="text-5xl">off</span>}
+                {giorniFine >= 0 ? giorniFine : <span className="text-5xl"><RiAlarmWarningFill/></span>}
               </span>  
               }
               <span className="text-xs text-neutral-500">
-                &ensp;/ giorni</span>
+                &ensp;/ off</span>
             </div>
           </div>
 

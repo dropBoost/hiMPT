@@ -26,89 +26,57 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
   const [sottoscrizioni, setSottoscrizioni] = useState([])
   const [datasetAllenamenti, setDatasetAllenamenti] = useState([])
   const [loadingSchedaAllenamento, setLoadingSchedaAllenamento] = useState(false)
-  const [open, setOpen] = React.useState(false)
+  const [open, setOpen] = useState(false)
   const [statusSend, setStatusSend] = useState(false)
-  const [sottoscrizioneScelta, setSottoscrizioneScelta] = React.useState("")
-  const [pianoAbbonamento, setPianoAbbonamento] = useState([])
-  const [opzioniPianoAbbonamento, setOpzioniPianoAbbonamento] = useState([])
+  const [sottoscrizioneScelta, setSottoscrizioneScelta] = useState("")
+
   const [schedaAllenamento, setSchedaAllenamento] = useState({
     sotUuid: "",
     dataInizio: "",
     dataFine: "",
     noteScheda: "",
+    giorniAllenamento:"",
   })
 
-  // Carica le sottoscrizioni
+  // Carica le sottoscrizioni attive
   useEffect(() => {
     ;(async () => {
       const { data: sottoscrizioniData, error } = await supabase
         .from("sottoscrizioni")
         .select(`
-            uuid_sottoscrizione,
-            uuid_cliente,
-            data_inizio_sottoscrizione,
-            data_fine_sottoscrizione,
-            created_at_sottoscrizione,
-            cliente:clienti (
-                nome_cliente,
-                cognome_cliente
-            )`)
+          uuid_sottoscrizione,
+          uuid_cliente,
+          data_inizio_sottoscrizione,
+          data_fine_sottoscrizione,
+          created_at_sottoscrizione,
+          uuid_pt,
+          uuid_nut,
+          attivo_sottoscrizione,
+          tipologia_abbonamento,
+          costo_abbonamento,
+          sconto_abbonamento,
+          condizione_pagamento,
+          note_abbonamento,
+          cliente:clienti (
+            nome_cliente,
+            cognome_cliente,
+            data_nascita_cliente,
+            codice_fiscale_cliente,
+            telefono_cliente,
+            email_cliente
+          )
+        `)
         .eq("attivo_sottoscrizione", true)
-        .order("created_at_sottoscrizione", { ascending: false })
+        .order("cognome_cliente", { ascending: true, foreignTable: "clienti" })
 
       if (error) {
         console.error(error)
-        console.error("Errore nel caricamento delle sottoscrizioni")
+        toast.error("Errore nel caricamento delle sottoscrizioni")
         return
       }
       setSottoscrizioni(sottoscrizioniData ?? [])
     })()
   }, [])
-
-  // Carica i piani abbonamento
-  useEffect(() => {
-    ;(async () => {
-      const { data: pianoAbbonamento, error } = await supabase
-        .from("piano_abbonamento")
-        .select(`
-            uuid_abbonamento,
-            uuid_sottoscrizione,
-            tipologia_abbonamento,
-            costo_abbonamento,
-            sconto_abbonamento,
-            note_abbonamento,
-            created_at_abbonamento,
-            sottoscrizione:sottoscrizioni(
-              uuid_sottoscrizione,
-              uuid_cliente,
-              data_inizio_sottoscrizione,
-              data_fine_sottoscrizione,
-              created_at_sottoscrizione,
-              uuid_pt,
-              uuid_nut,
-              attivo_sottoscrizione,
-              cliente:clienti (
-                  nome_cliente,
-                  cognome_cliente,
-                  data_nascita_cliente,
-                  codice_fiscale_cliente,
-                  telefono_cliente,
-                  email_cliente
-              ))
-            `)
-        .eq("sottoscrizioni.attivo_sottoscrizione", true)
-        // .order("created_at_sottoscrizione", { ascending: false })
-
-      if (error) {
-        console.error(error)
-        console.error("Errore nel caricamento dei piano abbonamento")
-        return
-      }
-      setPianoAbbonamento(pianoAbbonamento ?? [])
-    })()
-  }, [])
-
-  
 
   const opzioniSottoscrizioni = (sottoscrizioni ?? [])
     .filter(s => (s?.data_fine_sottoscrizione ?? "") >= dataOggiSottoscrizioni && s.attivo_sottoscrizione != false)
@@ -117,25 +85,6 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
       label: `${sot.cliente?.cognome_cliente ?? ""} ${sot.cliente?.nome_cliente ?? ""}`.trim()
     }
   ));
-
-  useEffect(() => {
-    const list = Array.isArray(pianoAbbonamento) ? pianoAbbonamento : []
-
-    const pianiAbbonamentoFiltrati = list
-      .filter(s => {
-        const fine   = s?.sottoscrizione?.data_fine_sottoscrizione ?? ""
-        const attivo = s?.sottoscrizione?.attivo_sottoscrizione === true
-        const tipoOk = String(s?.tipologia_abbonamento || "").toLowerCase() !== "nutrizione"
-        // valido se le date sono "YYYY-MM-DD"
-        return typeof fine === "string" && fine >= dataOggiSottoscrizioni && attivo && tipoOk
-      })
-      .map(sot => ({
-        value: sot?.uuid_sottoscrizione ?? "",
-        label: `${sot?.sottoscrizione?.cliente?.cognome_cliente ?? ""} ${sot?.sottoscrizione?.cliente?.nome_cliente ?? ""}`.trim()
-      }))
-
-    setOpzioniPianoAbbonamento(pianiAbbonamentoFiltrati)
-  }, [pianoAbbonamento, dataOggiSottoscrizioni])
 
   const sottoscrizioniFiltrateCliente = sottoscrizioni.filter(a => a.uuid_cliente == sottoscrizioneScelta)
 
@@ -152,6 +101,7 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
           data_fine_allenamento,
           created_at_allenamento,
           note_scheda_allenamento,
+          giornate_allenamento,
           sottoscrizione:sottoscrizioni!inner (
           uuid_cliente,
           uuid_pt,
@@ -192,13 +142,6 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
       return
     }
 
-    // {sottoscrizioniFiltrateCliente.map((sc, index) => 
-    //   {if (value <=  sc.data_fine_sottoscrizione) {
-    //   console.log("sottoscrizione già attiva")
-    //   return
-    // }}
-    // )}
-
     setSchedaAllenamento(prev => ({ ...prev, [name]: value }))
   }
 
@@ -225,6 +168,16 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
     const { name, value } = e.target
     setSchedaAllenamento(prev => ({ ...prev, [name]: value }))
   }
+
+  function handleChangeGiorni(e) {
+    const { name, value } = e.target
+    if (value <= 7){
+    setSchedaAllenamento(prev => ({ ...prev, [name]: value }))
+    } else {
+      console.log("max 7gg week")
+    }
+    
+  }
   
   async function handleSubmitSchedaAllenamento(e) {
     e.preventDefault()
@@ -242,11 +195,18 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
       return
     }
 
+    if (!schedaAllenamento.giorniAllenamento) {
+      console.error("Scegli quanti allenamenti settimanali")
+      return
+    }
+
+
     const payloadSchedaAllenamento = {
       uuid_sottoscrizione: sottoscrizioneScelta,
       data_inizio_allenamento: schedaAllenamento.dataInizio,
       data_fine_allenamento: schedaAllenamento.dataFine,
       note_scheda_allenamento: schedaAllenamento.noteScheda,
+      giornate_allenamento: schedaAllenamento.giorniAllenamento,
     }
 
     setLoadingSchedaAllenamento(true)
@@ -256,6 +216,9 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
       .select()
       .single()
     setLoadingSchedaAllenamento(false)
+
+    setStatusSend(prev => !prev)
+    setStatusEsercizi(prev => !prev)
 
     if (error) {
       console.error(error)
@@ -267,10 +230,10 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
         dataInizio: "",
         dataFine: "",
         noteScheda: "",
+        giorniAllenamento:"",
     })
 
-    setStatusSend(prev => !prev)
-    setStatusEsercizi(prev => !prev)
+
 
     console.log("Inserito:", data)
     toast.success("Scheda Allenamento inserita con successo!")
@@ -282,9 +245,13 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
         dataInizio: "",
         dataFine: "",
         noteScheda: "",
-    },
-    setSottoscrizioneScelta(""))
+        giorniAllenamento:"",
+    }
+    ),
+    setSottoscrizioneScelta("")
   }
+
+  console.log(datasetAllenamenti)
 
   return (
     <>
@@ -299,7 +266,7 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
             <form id="formInserimentoScheda" onSubmit={handleSubmitSchedaAllenamento} className="grid grid-cols-12 gap-4 p-6 bg-white dark:bg-neutral-900 rounded-2xl shadow-lg">
                 <div className="col-span-12 lg:col-span-6">
                     <label className="block text-sm font-semibold mb-1">
-                        Piani Abbonamento Attivi
+                        Sottoscrizioni Attive
                     </label>
                     <Popover open={open} onOpenChange={setOpen} className="w-full">
                         <PopoverTrigger asChild>
@@ -312,7 +279,7 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
                             focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2
                             ring-offset-background
                             data-[state=open]:ring-2 data-[state=open]:ring-ring data-[state=open]:ring-offset-2">
-                            {sottoscrizioneScelta ? opzioniPianoAbbonamento.find((cliente) => cliente.value === sottoscrizioneScelta)?.label  : "seleziona un cliente..."}
+                            {sottoscrizioneScelta ? opzioniSottoscrizioni.find((cliente) => cliente.value === sottoscrizioneScelta)?.label  : "seleziona un cliente..."}
                             <ChevronsUpDown className="opacity-50" />
                         </Button>
                         </PopoverTrigger>
@@ -326,7 +293,7 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
                             <CommandList className="my-1">
                                 <CommandEmpty>Nessun risultato</CommandEmpty>
                                 <CommandGroup>
-                                {opzioniPianoAbbonamento.map((opt) => (
+                                {opzioniSottoscrizioni.map((opt) => (
                                     <CommandItem
                                     key={opt.value}
                                     // ciò che viene usato per il filtro:
@@ -369,6 +336,15 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
                     onchange={handleChangeDataFine}
                     type="date"
                 />
+                <FormField
+                    nome="giorniAllenamento"
+                    label="Giorni di Allenamento (.../7gg)"
+                    value={schedaAllenamento.giorniAllenamento}
+                    colspan="col-span-6"
+                    mdcolspan="lg:col-span-3"
+                    onchange={handleChangeGiorni}
+                    type="number"
+                />
                 <FormTextarea nome="noteScheda" label='Note' value={schedaAllenamento.noteScheda} colspan="col-span-12" mdcolspan="lg:col-span-12" onchange={handleChangeNote} type='text-area'/>
                 <div className="col-span-12 flex justify-end gap-2">
                     <button
@@ -403,6 +379,7 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
                 <TableHead className="text-left truncate">Note</TableHead>
                 <TableHead className="text-right truncate">Inizio Scheda</TableHead>
                 <TableHead className="text-right truncate">Fine Scheda</TableHead>
+                <TableHead className="text-right truncate">gg</TableHead>
                 <TableHead className="text-right truncate">C</TableHead>
                 <TableHead className="text-right truncate">D</TableHead>
               </TableRow>
@@ -429,6 +406,9 @@ export default function InserimentoScheda({onDisplay, statusEsercizi, setStatusE
                     </TableCell>
                     <TableCell className="text-right">
                       {scheda?.data_fine_allenamento}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {scheda?.giornate_allenamento}
                     </TableCell>
                     <TableCell className="text-right">
                       {scheda?.created_at_pagamento}

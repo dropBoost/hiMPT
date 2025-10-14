@@ -2,16 +2,14 @@
 
 import { useState } from "react";
 
-import InserimentoScheda from "./inserimentoScheda";
-import AreaWorkout from "./areaWorkout";
-import AreaSchede from "./areaSchede";
+import ElencoProgressi from "./elencoProgressi";
+import InserisciProgressi from "./inserisciProgressi";
 
-export default function Workout() {
+export default function Progress() {
 
   const [onDisplaySectionOne, setOnDisplaySectionOne] = useState("on")
   const [onDisplaySectionTwo, setOnDisplaySectionTwo] = useState("off")
   const [onDisplaySectionThree, setOnDisplaySectionThree] = useState("off")
-  const [statusEsercizi, setStatusEsercizi] = useState(false)
 
   function ClickSectionOne () {
     setOnDisplaySectionOne("on")
@@ -35,14 +33,14 @@ export default function Workout() {
     <>
     <div className="flex flex-col h-full w-full justify-center items-center">
       <div className="flex items-start md:justify-start justify-center w-full gap-3 py-3">
-        <ButtonSection click={ClickSectionOne} nome="INSERIMENTO SCHEDA" section={onDisplaySectionOne}/>
-        <ButtonSection click={ClickSectionTwo} nome="AREA WORKOUT" section={onDisplaySectionTwo}/>
-        <ButtonSection click={ClickSectionThree} nome="AREA SCHEDE" section={onDisplaySectionThree}/>
+        <ButtonSection click={ClickSectionOne} nome="INSERISCI PROGRESSI" section={onDisplaySectionOne}/>
+        <ButtonSection click={ClickSectionTwo} nome="SCHEDE PROGRESSI" section={onDisplaySectionTwo}/>
+        {/* <ButtonSection click={ClickSectionThree} nome="SITUAZIONE DEBITORIA" section={onDisplaySectionThree}/> */}
       </div>
       <div className="flex flex-1 justify-start items-start lg:p-5 p-4 pe-3 h-full w-full lg:border lg:rounded-s-2xl lg:rounded-e-sm border-t rounded-none border-brand dark:bg-neutral-800/50 overflow-auto">
-        <InserimentoScheda onDisplay={onDisplaySectionOne} statusEsercizi={statusEsercizi} setStatusEsercizi={setStatusEsercizi}/>
-        <AreaWorkout onDisplay={onDisplaySectionTwo} statusEsercizi={statusEsercizi} setStatusEsercizi={setStatusEsercizi}/>
-        <AreaSchede onDisplay={onDisplaySectionThree} statusEsercizi={statusEsercizi} setStatusEsercizi={setStatusEsercizi}/>
+        <InserisciProgressi onDisplay={onDisplaySectionOne}/>
+        <ElencoProgressi onDisplay={onDisplaySectionTwo}/>
+        {/* <SituazioneDebitoria onDisplay={onDisplaySectionThree}/> */}
       </div>
     </div>
     </>

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
-export default function SottoscrizioniAbbonamenti(props) {
+export default function ElencoProgressi(props) {
 
   const onDisplay = props.onDisplay
   const today = new Date();
